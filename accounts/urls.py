@@ -1,5 +1,21 @@
 from django.urls import path
 from .views import *
+from rest_framework.routers import DefaultRouter
+from .views import StudentProfileViewSet
+from django.urls import include
+
+router = DefaultRouter()
+router.register(r'students', StudentProfileViewSet)
+
+
+
+from rest_framework.routers import DefaultRouter
+from .views import StudentProfileViewSet
+
+router = DefaultRouter()
+router.register(r'students', StudentProfileViewSet)
+
+urlpatterns = router.urls
 
 urlpatterns = [
 
@@ -18,7 +34,7 @@ urlpatterns = [
     #polytechnic
     path('polytechnic/', PolytechnicListCreateView.as_view()),
     path('polytechnic/<int:pk>/', PolytechnicDetailView.as_view()),
-    
+
     # Intermediate
     path('intermediate/', IntermediateListCreateView.as_view()),
     path('intermediate/<int:pk>/', IntermediateDetailView.as_view()),
@@ -30,4 +46,10 @@ urlpatterns = [
     #degree
     path('degree/', DegreeListCreateView.as_view()),
     path('degree/<int:pk>/', DegreeDetailView.as_view()),
+
+    path('', include(router.urls)),
+
+
+    
 ]
+

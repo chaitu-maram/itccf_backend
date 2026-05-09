@@ -51,3 +51,32 @@ class DegreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Degree
         fields = '__all__'
+
+
+
+from rest_framework import serializers
+from .models import StudentProfile
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentProfile
+        fields = '__all__'
+
+
+
+from rest_framework import serializers
+from .models import StudentProfile, InterviewQuestion
+
+
+class InterviewQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewQuestion
+        fields = ['question']
+
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+    questions = InterviewQuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = '__all__'

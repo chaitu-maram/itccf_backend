@@ -93,3 +93,49 @@ class DegreeListCreateView(generics.ListCreateAPIView):
 class DegreeDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Degree.objects.all()
     serializer_class = DegreeSerializer
+
+
+
+from rest_framework import viewsets
+from .models import StudentProfile
+from .serializers import StudentProfileSerializer
+
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    queryset = StudentProfile.objects.all().order_by('-created_at')
+    serializer_class = StudentProfileSerializer
+
+
+
+
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from .models import StudentProfile, InterviewQuestion
+from .serializers import StudentProfileSerializer
+from .ai_utils import generate_ai_questions
+
+
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    queryset = StudentProfile.objects.all()
+    serializer_class = StudentProfileSerializer
+
+    @action(detail=True, methods=['get'])
+    def generate_questions(self, request, pk=None):
+        student = self.get_object()
+
+        # delete old questions
+        InterviewQuestion.objects.filter(student=student).delete()
+
+        # ✅ correct function call
+        questions = generate_ai_questions(student)
+
+        # save new questions
+        for q in questions:
+            InterviewQuestion.objects.create(student=student, question=q)
+
+        return Response({
+            "student_id": student.id,
+            "student_name": student.name,
+            "questions": questions
+        })
