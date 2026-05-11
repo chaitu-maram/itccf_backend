@@ -139,3 +139,117 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
             "student_name": student.name,
             "questions": questions
         })
+    
+
+
+
+
+import random
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import HR
+from .serializers import HRSignupSerializer
+
+
+class HRSignupView(APIView):
+
+    def post(self, request):
+
+        data = request.data
+
+        # generate otp
+        otp = str(random.randint(100000, 999999))
+
+        # save user
+        hr = HR.objects.create(
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+            dob=data.get("dob"),
+            college_code=data.get("college_code"),
+            college_name=data.get("college_name"),
+            roll_number=data.get("roll_number"),
+            current_year=data.get("current_year"),
+            college_state=data.get("college_state"),
+            college_city=data.get("college_city"),
+            phone=data.get("phone"),
+            email=data.get("email"),
+            password=data.get("password"),
+            otp=otp,
+        )
+
+        # send otp mail
+        send_mail(
+            subject="Your OTP Verification Code",
+            message=f"Your OTP is: {otp}",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[hr.email],
+            fail_silently=False,
+        )
+
+        return Response(
+            {
+                "message": "Signup successful. OTP sent to email.",
+                "email": hr.email
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+class VerifyOTPView(APIView):
+
+    def post(self, request):
+
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+
+        try:
+            hr = HR.objects.get(email=email)
+
+            if hr.otp == otp:
+                hr.is_verified = True
+                hr.otp = ""
+                hr.save()
+
+                return Response(
+                    {"message": "Email verified successfully"},
+                    status=status.HTTP_200_OK
+                )
+
+            return Response(
+                {"error": "Invalid OTP"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except HR.DoesNotExist:
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import University
+from .serializers import UniversitySerializer
+
+
+@api_view(["GET"])
+def get_universities(request):
+
+    state = request.GET.get("state")
+
+    if state:
+        universities = University.objects.filter(state=state).order_by("name")
+    else:
+        universities = University.objects.all().order_by("name")
+
+    serializer = UniversitySerializer(universities, many=True)
+
+    return Response(serializer.data)

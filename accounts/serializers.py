@@ -80,3 +80,24 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
         fields = '__all__'
+
+
+from rest_framework import serializers
+from .models import HR
+
+
+class HRSignupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HR
+        fields = "__all__"
+
+
+
+from rest_framework import serializers
+from .models import University
+
+
+class UniversitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = University
+        fields = "__all__"

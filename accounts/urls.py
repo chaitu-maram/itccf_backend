@@ -3,6 +3,7 @@ from .views import *
 from rest_framework.routers import DefaultRouter
 from .views import StudentProfileViewSet
 from django.urls import include
+from .views import HRSignupView, VerifyOTPView, get_universities
 
 router = DefaultRouter()
 router.register(r'students', StudentProfileViewSet)
@@ -48,6 +49,11 @@ urlpatterns = [
     path('degree/<int:pk>/', DegreeDetailView.as_view()),
 
     path('', include(router.urls)),
+
+
+    path("hr/signup/", HRSignupView.as_view()),
+    path("hr/verify-otp/", VerifyOTPView.as_view()),
+    path("universities/", get_universities),
 
 
     

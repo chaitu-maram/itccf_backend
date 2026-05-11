@@ -170,3 +170,69 @@ class InterviewQuestion(models.Model):
 
     def __str__(self):
         return self.question[:50]
+    
+
+
+
+class University(models.Model):
+    name = models.CharField(max_length=255)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+    
+from django.db import models
+
+
+class HR(models.Model):
+    CURRENT_YEAR_CHOICES = [
+        ("1st Year", "1st Year"),
+        ("2nd Year", "2nd Year"),
+        ("3rd Year", "3rd Year"),
+        ("4th Year", "4th Year"),
+        ("5th Year", "5th Year"),
+        ("Graduated", "Graduated"),
+    ]
+
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+
+    # DD-MM-YYYY
+    dob = models.CharField(max_length=20, blank=True, null=True)
+
+    college_code = models.CharField(max_length=100, blank=True, null=True)
+    college_name = models.CharField(max_length=255, blank=True, null=True)
+
+    roll_number = models.CharField(max_length=100, blank=True, null=True)
+
+    current_year = models.CharField(
+        max_length=20,
+        choices=CURRENT_YEAR_CHOICES,
+        blank=True,
+        null=True
+    )
+
+    college_state = models.CharField(max_length=100, blank=True, null=True)
+    college_city = models.CharField(max_length=100, blank=True, null=True)
+
+    phone = models.CharField(max_length=10, blank=True, null=True)
+    email = models.EmailField(unique=True, blank=True, null=True)
+
+    password = models.CharField(max_length=255, blank=True, null=True)
+
+    # OTP
+    otp = models.CharField(max_length=6, blank=True, null=True)
+    is_verified = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    university = models.ForeignKey(
+        University,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+    
+
