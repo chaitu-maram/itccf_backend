@@ -101,3 +101,60 @@ class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = University
         fields = "__all__"
+
+
+
+from rest_framework import serializers
+from .models import Employer, IndustrySector
+
+
+class IndustrySectorSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = IndustrySector
+        fields = ["id", "name"]
+
+
+class EmployerSignupSerializer(serializers.ModelSerializer):
+
+    class Meta:
+
+        model = Employer
+
+        fields = [
+            "name",
+            "designation",
+            "contact_number",
+            "email",
+            "password",
+            "company_name",
+            "company_industry",
+            "company_address_line1",
+            "company_address_line2",
+            "company_city",
+            "company_state",
+            "company_pincode",
+            "manufacturing_activity",
+        ]
+
+        extra_kwargs = {
+            "password": {"write_only": True}
+        }
+
+    def validate_contact_number(self, value):
+
+        if len(value) != 10:
+            raise serializers.ValidationError(
+                "Contact number must be 10 digits"
+            )
+
+        return value
+
+    def validate_company_pincode(self, value):
+
+        if len(value) != 6:
+            raise serializers.ValidationError(
+                "Pincode must be 6 digits"
+            )
+
+        return value

@@ -4,6 +4,12 @@ from rest_framework.routers import DefaultRouter
 from .views import StudentProfileViewSet
 from django.urls import include
 from .views import HRSignupView, VerifyOTPView, get_universities
+from .views import (
+    SendOTPView,
+    VerifyOTPView,
+    EmployerSignupView,
+    IndustrySectorListView
+)
 
 router = DefaultRouter()
 router.register(r'students', StudentProfileViewSet)
@@ -54,6 +60,28 @@ urlpatterns = [
     path("hr/signup/", HRSignupView.as_view()),
     path("hr/verify-otp/", VerifyOTPView.as_view()),
     path("universities/", get_universities),
+
+
+
+    path(
+        "employer/send-otp/",
+        SendOTPView.as_view()
+    ),
+
+    path(
+        "employer/verify-otp/",
+        VerifyOTPView.as_view()
+    ),
+
+    path(
+        "employer/signup/",
+        EmployerSignupView.as_view()
+    ),
+
+    path(
+        "industries/",
+        IndustrySectorListView.as_view()
+    ),
 
 
     

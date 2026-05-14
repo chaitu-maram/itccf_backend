@@ -74,7 +74,7 @@ class StudentProfile(models.Model):
     logins_count = models.IntegerField(blank=True, null=True)
     percentage_obtained = models.FloatField(blank=True, null=True)
     success_rate = models.FloatField(blank=True, null=True)
-    hr_photo = models.ImageField(upload_to='hr_photos/', blank=True, null=True)
+    # hr_photo = models.ImageField(upload_to='hr_photos/', blank=True, null=True)
 
     # Candidate Details
     surname = models.CharField(max_length=100, blank=True, null=True)
@@ -86,7 +86,7 @@ class StudentProfile(models.Model):
     regn_no = models.CharField(max_length=50, blank=True, null=True)
     date = models.DateField(blank=True, null=True)
 
-    photo = models.ImageField(upload_to='student_photos/', blank=True, null=True)
+    # photo = models.ImageField(upload_to='student_photos/', blank=True, null=True)
 
     # Qualification
     academic = models.CharField(max_length=100, blank=True, null=True)
@@ -150,13 +150,20 @@ class StudentProfile(models.Model):
     job_nature_v2 = models.CharField(max_length=150, blank=True, null=True)
 
     # Signature
-    digital_signature = models.ImageField(upload_to='signatures/', blank=True, null=True)
+    # digital_signature = models.ImageField(upload_to='signatures/', blank=True, null=True)
 
+    hr_photo = models.ImageField(upload_to='hr_photos/', blank=True, null=True)
+
+    photo = models.ImageField(upload_to='student_photos/', blank=True, null=True)
+
+    digital_signature = models.ImageField(upload_to='signatures/', blank=True, null=True)
     # Meta
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     questions_ready = models.BooleanField(default=False)
+
+    score = models.FloatField(default=0)
 
     def __str__(self):
         return f"{self.name or 'No Name'} ({self.regn_no or 'No Reg'})"
@@ -185,7 +192,65 @@ class University(models.Model):
 from django.db import models
 
 
+# class HR(models.Model):
+#     CURRENT_YEAR_CHOICES = [
+#         ("1st Year", "1st Year"),
+#         ("2nd Year", "2nd Year"),
+#         ("3rd Year", "3rd Year"),
+#         ("4th Year", "4th Year"),
+#         ("5th Year", "5th Year"),
+#         ("Graduated", "Graduated"),
+#     ]
+
+#     first_name = models.CharField(max_length=100, blank=True, null=True)
+#     last_name = models.CharField(max_length=100, blank=True, null=True)
+
+#     # DD-MM-YYYY
+#     dob = models.CharField(max_length=20, blank=True, null=True)
+
+#     college_code = models.CharField(max_length=100, blank=True, null=True)
+#     college_name = models.CharField(max_length=255, blank=True, null=True)
+
+#     roll_number = models.CharField(max_length=100, blank=True, null=True)
+
+#     current_year = models.CharField(
+#         max_length=20,
+#         choices=CURRENT_YEAR_CHOICES,
+#         blank=True,
+#         null=True
+#     )
+
+#     college_state = models.CharField(max_length=100, blank=True, null=True)
+#     college_city = models.CharField(max_length=100, blank=True, null=True)
+
+#     phone = models.CharField(max_length=10, blank=True, null=True)
+#     email = models.EmailField(unique=True, blank=True, null=True)
+
+#     password = models.CharField(max_length=255, blank=True, null=True)
+
+#     # OTP
+#     otp = models.CharField(max_length=6, blank=True, null=True)
+#     is_verified = models.BooleanField(default=False)
+
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     university = models.ForeignKey(
+#         University,
+#         on_delete=models.SET_NULL,
+#         null=True,
+#         blank=True
+#     )
+#     def __str__(self):
+#         return f"{self.first_name} {self.last_name}"
+    
+
+
+
+from django.db import models
+from django.utils import timezone
+
+
 class HR(models.Model):
+
     CURRENT_YEAR_CHOICES = [
         ("1st Year", "1st Year"),
         ("2nd Year", "2nd Year"),
@@ -194,6 +259,14 @@ class HR(models.Model):
         ("5th Year", "5th Year"),
         ("Graduated", "Graduated"),
     ]
+
+    # CUSTOM HR ID
+    hr_id = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True
+    )
 
     first_name = models.CharField(max_length=100, blank=True, null=True)
     last_name = models.CharField(max_length=100, blank=True, null=True)
@@ -217,22 +290,141 @@ class HR(models.Model):
     college_city = models.CharField(max_length=100, blank=True, null=True)
 
     phone = models.CharField(max_length=10, blank=True, null=True)
-    email = models.EmailField(unique=True, blank=True, null=True)
+
+    email = models.EmailField(
+        unique=True,
+        blank=True,
+        null=True
+    )
 
     password = models.CharField(max_length=255, blank=True, null=True)
 
     # OTP
     otp = models.CharField(max_length=6, blank=True, null=True)
+
     is_verified = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
     university = models.ForeignKey(
-        University,
+        "University",
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
+
+    def save(self, *args, **kwargs):
+
+        # GENERATE HR ID ONLY IF EMPTY
+        if not self.hr_id:
+
+            today = timezone.now().strftime("%d%m%y")
+
+            # COUNT TODAY'S RECORDS
+            today_count = HR.objects.filter(
+                created_at__date=timezone.now().date()
+            ).count() + 1
+
+            # FORMAT:
+            # HR1205260001
+            self.hr_id = f"HR{today}{today_count:04d}"
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.hr_id} - {self.first_name} {self.last_name}"
     
 
+
+from django.db import models
+from django.contrib.auth.hashers import make_password
+from django.utils import timezone
+from datetime import timedelta
+
+
+class IndustrySector(models.Model):
+
+    name = models.CharField(
+        max_length=255,
+        unique=True
+    )
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Employer(models.Model):
+
+    name = models.CharField(max_length=255)
+
+    designation = models.CharField(max_length=255)
+
+    contact_number = models.CharField(max_length=10)
+
+    email = models.EmailField(unique=True)
+
+    password = models.CharField(max_length=255)
+
+    company_name = models.CharField(max_length=255)
+
+    company_industry = models.ForeignKey(
+        IndustrySector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    company_address_line1 = models.TextField()
+
+    company_address_line2 = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    company_city = models.CharField(max_length=255)
+
+    company_state = models.CharField(max_length=255)
+
+    company_pincode = models.CharField(max_length=6)
+
+    manufacturing_activity = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    otp = models.CharField(
+        max_length=6,
+        blank=True,
+        null=True
+    )
+
+    otp_created_at = models.DateTimeField(
+        blank=True,
+        null=True
+    )
+
+    is_email_verified = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+
+        if self.password and not self.password.startswith("pbkdf2_"):
+            self.password = make_password(self.password)
+
+        super().save(*args, **kwargs)
+
+    def otp_is_valid(self):
+
+        if not self.otp or not self.otp_created_at:
+            return False
+
+        expiry_time = self.otp_created_at + timedelta(minutes=5)
+
+        return timezone.now() <= expiry_time
+
+    def __str__(self):
+        return self.company_name

@@ -1,86 +1,86 @@
-import requests
+# import requests
 
-def generate_ai_questions(student):
-    prompt = f"""
-Generate exactly 4 multiple choice interview questions.
+# def generate_ai_questions(student):
+#     prompt = f"""
+# Generate exactly 4 multiple choice interview questions.
 
-Candidate Profile:
-- Academic: {student.academic}
-- Specialization: {student.specialization}
-- Designation: {student.designation}
-- Tech Stack: {student.tech_stack}
-- Core Specialization: {student.core_spec_v1} {student.core_spec_v2}
-- Technical Skills: {student.technical_v1} {student.technical_v2}
-- Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
+# Candidate Profile:
+# - Academic: {student.academic}
+# - Specialization: {student.specialization}
+# - Designation: {student.designation}
+# - Tech Stack: {student.tech_stack}
+# - Core Specialization: {student.core_spec_v1} {student.core_spec_v2}
+# - Technical Skills: {student.technical_v1} {student.technical_v2}
+# - Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
 
-Rules:
-- Only questions
-- One question per line
-- No explanations
-- No numbering (just plain questions)
-"""
+# Rules:
+# - Only questions
+# - One question per line
+# - No explanations
+# - No numbering (just plain questions)
+# """
 
-    try:
-        print("🚀 Calling Ollama...")
+#     try:
+#         print("🚀 Calling Ollama...")
 
-        response = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "phi3",   # 🔥 faster than llama3
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "num_predict": 200
-                }
-            },
-            timeout=120
-        )
+#         response = requests.post(
+#             "http://localhost:11434/api/generate",
+#             json={
+#                 "model": "phi3",   # 🔥 faster than llama3
+#                 "prompt": prompt,
+#                 "stream": False,
+#                 "options": {
+#                     "num_predict": 200
+#                 }
+#             },
+#             timeout=120
+#         )
 
-        print("✅ Response received")
+#         print("✅ Response received")
 
-        data = response.json()
-        text = data.get("response", "")
+#         data = response.json()
+#         text = data.get("response", "")
 
-        print("RAW RESPONSE:\n", text)
+#         print("RAW RESPONSE:\n", text)
 
-        questions = []
+#         questions = []
 
-        for line in text.split("\n"):
-            line = line.strip()
+#         for line in text.split("\n"):
+#             line = line.strip()
 
-            if line:
-                cleaned = line.lstrip("0123456789.)- ").strip()
+#             if line:
+#                 cleaned = line.lstrip("0123456789.)- ").strip()
 
-                if cleaned:
-                    questions.append(cleaned)
+#                 if cleaned:
+#                     questions.append(cleaned)
 
-        # fallback if AI fails
-        if not questions:
-            return fallback_questions(student)
+#         # fallback if AI fails
+#         if not questions:
+#             return fallback_questions(student)
 
-        return questions[:4]
+#         return questions[:4]
 
-    except Exception as e:
-        print("❌ ERROR:", e)
-        return fallback_questions(student)
+#     except Exception as e:
+#         print("❌ ERROR:", e)
+#         return fallback_questions(student)
 
 
-def fallback_questions(student):
-    questions = []
+# def fallback_questions(student):
+#     questions = []
 
-    if student.tech_stack:
-        questions.append(f"Explain your experience with {student.tech_stack}")
+#     if student.tech_stack:
+#         questions.append(f"Explain your experience with {student.tech_stack}")
 
-    if student.specialization:
-        questions.append(f"What are key concepts in {student.specialization}?")
+#     if student.specialization:
+#         questions.append(f"What are key concepts in {student.specialization}?")
 
-    if student.designation:
-        questions.append(f"What is your role as {student.designation}?")
+#     if student.designation:
+#         questions.append(f"What is your role as {student.designation}?")
 
-    while len(questions) < 4:
-        questions.append("Tell me about a challenge you solved.")
+#     while len(questions) < 4:
+#         questions.append("Tell me about a challenge you solved.")
 
-    return questions
+#     return questions
 
 
 
@@ -89,7 +89,7 @@ def fallback_questions(student):
 
 # def generate_ai_questions(student):
 #     prompt = f"""
-# Generate exactly 4 multiple choice interview questions.
+# Generate exactly 3 multiple choice interview questions.
 
 # Candidate Profile:
 # - Academic: {student.academic}
@@ -153,7 +153,7 @@ def fallback_questions(student):
 #         if not questions:
 #             return fallback_questions(student)
 
-#         return questions[:4]
+#         return questions[:3]
 
 #     except Exception as e:
 #         print("❌ ERROR:", e)
@@ -191,3 +191,142 @@ def fallback_questions(student):
 # D. IDE
 # Answer: B"""
 #     ]
+
+
+
+import re
+import requests
+
+
+def generate_ai_questions(student):
+
+    prompt = f"""
+Generate EXACTLY 3 interview multiple choice questions.
+
+Candidate Profile:
+- Academic: {student.academic}
+- Specialization: {student.specialization}
+- Designation: {student.designation}
+- Tech Stack: {student.tech_stack}
+- Core Specialization: {student.core_spec_v1} {student.core_spec_v2}
+- Technical Skills: {student.technical_v1} {student.technical_v2}
+- Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
+
+STRICT RULES:
+1. Generate EXACTLY 3 questions
+2. Each question must contain:
+   - Question
+   - A option
+   - B option
+   - C option
+   - D option
+   - Correct Answer
+3. No explanations
+4. No markdown
+5. No extra text
+
+STRICT FORMAT:
+
+Question: <question>
+A. <option>
+B. <option>
+C. <option>
+D. <option>
+Answer: <letter>
+
+Question: <question>
+A. <option>
+B. <option>
+C. <option>
+D. <option>
+Answer: <letter>
+
+Question: <question>
+A. <option>
+B. <option>
+C. <option>
+D. <option>
+Answer: <letter>
+"""
+
+    try:
+
+        print("🚀 Calling Ollama...")
+
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "phi3",
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "num_predict": 800
+                }
+            },
+            timeout=120
+        )
+
+        print("✅ Response received")
+
+        data = response.json()
+
+        text = data.get("response", "")
+
+        print("RAW RESPONSE:\n", text)
+
+        # regex extraction
+        pattern = r"(Question:.*?Answer:\s*[A-D])"
+
+        matches = re.findall(
+            pattern,
+            text,
+            re.DOTALL
+        )
+
+        questions = [
+            q.strip()
+            for q in matches
+        ]
+
+        print("PARSED QUESTIONS:", len(questions))
+
+        # fallback if insufficient questions
+        if len(questions) < 3:
+            print("⚠️ Using fallback questions")
+            return fallback_questions(student)
+
+        return questions[:3]
+
+    except Exception as e:
+
+        print("❌ ERROR:", e)
+
+        return fallback_questions(student)
+
+
+def fallback_questions(student):
+
+    return [
+
+        """Question: What is a REST API?
+A. A database
+B. A web service architecture
+C. A programming language
+D. A browser
+Answer: B""",
+
+        """Question: What does Django ORM do?
+A. Manages databases
+B. Handles CSS
+C. Creates UI
+D. Runs JavaScript
+Answer: A""",
+
+        """Question: What is React used for?
+A. Backend
+B. Database
+C. Frontend UI
+D. Networking
+Answer: C"""
+    ]
