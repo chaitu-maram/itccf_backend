@@ -158,3 +158,39 @@ class EmployerSignupSerializer(serializers.ModelSerializer):
             )
 
         return value
+    
+
+
+from rest_framework import serializers
+from .models import HR
+
+
+class HRProfileSerializer(serializers.ModelSerializer):
+
+    hr_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HR
+
+        fields = [
+            "hr_id",
+            "first_name",
+            "last_name",
+            "hr_name",
+            "email",
+            "phone",
+            "college_name",
+            "college_code",
+            "current_year",
+            "college_state",
+            "college_city",
+            "roll_number",
+            "created_at",
+        ]
+
+    def get_hr_name(self, obj):
+
+        first = obj.first_name or ""
+        last = obj.last_name or ""
+
+        return f"{first} {last}".strip()

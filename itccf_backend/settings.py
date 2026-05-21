@@ -136,7 +136,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'chaitu.m039@gmail.com'
-EMAIL_HOST_PASSWORD = 'izlv nugn czgx ofpk'
+EMAIL_HOST_PASSWORD = 'cjpe labf luil filj'
 
 
 MEDIA_URL = "/media/"

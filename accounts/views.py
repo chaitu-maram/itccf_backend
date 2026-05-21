@@ -1,5 +1,12 @@
 from django.shortcuts import render
 
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from .serializers import HRProfileSerializer
+from .models import HR
 # Create your views here.
 from rest_framework import generics
 from .models import (
@@ -214,6 +221,189 @@ from .models import HR, University
 import random
 
 
+# class HRSignupView(APIView):
+
+#     def post(self, request):
+
+#         try:
+
+#             data = request.data
+
+#             # =========================
+#             # CHECK EMAIL EXISTS
+#             # =========================
+#             email = data.get("email")
+
+#             if email:
+
+#                 existing_hr = HR.objects.filter(email=email).first()
+
+#                 if existing_hr:
+
+#                     return Response(
+#                         {
+#                             "message": "Email already registered"
+#                         },
+#                         status=status.HTTP_400_BAD_REQUEST
+#                     )
+
+#             # =========================
+#             # GENERATE OTP
+#             # =========================
+#             otp = str(random.randint(100000, 999999))
+
+#             # =========================
+#             # UNIVERSITY
+#             # =========================
+#             university = None
+
+#             university_id = data.get("university")
+
+#             if university_id:
+
+#                 university = University.objects.filter(
+#                     id=university_id
+#                 ).first()
+
+#             # =========================
+#             # CREATE HR
+#             # =========================
+#             hr = HR.objects.create(
+
+#                 first_name=data.get("first_name"),
+
+#                 last_name=data.get("last_name"),
+
+#                 dob=data.get("dob"),
+
+#                 college_code=data.get("college_code"),
+
+#                 college_name=data.get("college_name"),
+
+#                 roll_number=data.get("roll_number"),
+
+#                 current_year=data.get("current_year"),
+
+#                 college_state=data.get("college_state"),
+
+#                 college_city=data.get("college_city"),
+
+#                 phone=data.get("phone"),
+
+#                 email=email,
+
+#                 password=data.get("password"),
+
+#                 otp=otp,
+
+#                 university=university,
+#             )
+
+#             # =========================
+#             # SEND OTP EMAIL
+#             # =========================
+#             if hr.email:
+
+#                 send_mail(
+#                     subject="Your OTP Verification Code",
+
+#                     message=f"""
+# Hello {hr.first_name},
+
+# Your OTP verification code is:
+
+# {otp}
+
+# Your HR ID is:
+# {hr.hr_id}
+
+# Thank You
+#                     """,
+
+#                     from_email=settings.EMAIL_HOST_USER,
+
+#                     recipient_list=[hr.email],
+
+#                     fail_silently=False,
+#                 )
+
+#             # =========================
+#             # SUCCESS RESPONSE
+#             # =========================
+#             return Response(
+#                 {
+#                     "message": "Signup successful. OTP sent to email.",
+
+#                     "hr_id": hr.hr_id,
+
+#                     "email": hr.email,
+
+#                     "otp_sent": True,
+#                 },
+#                 status=status.HTTP_201_CREATED
+#             )
+
+#         except Exception as e:
+
+#             return Response(
+#                 {
+#                     "message": "Signup failed",
+
+#                     "error": str(e)
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+
+# class VerifyOTPView(APIView):
+
+#     def post(self, request):
+
+#         email = request.data.get("email")
+#         otp = request.data.get("otp")
+
+#         try:
+#             hr = HR.objects.get(email=email)
+
+#             if hr.otp == otp:
+#                 hr.is_verified = True
+#                 hr.otp = ""
+#                 hr.save()
+
+#                 return Response(
+#                     {"message": "Email verified successfully"},
+#                     status=status.HTTP_200_OK
+#                 )
+
+#             return Response(
+#                 {"error": "Invalid OTP"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         except HR.DoesNotExist:
+#             return Response(
+#                 {"error": "User not found"},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+from .models import HR, University
+
+import random
+
+
+# =========================================================
+# HR SIGNUP
+# =========================================================
 class HRSignupView(APIView):
 
     def post(self, request):
@@ -223,22 +413,73 @@ class HRSignupView(APIView):
             data = request.data
 
             # =========================
-            # CHECK EMAIL EXISTS
+            # GET EMAIL
             # =========================
             email = data.get("email")
 
-            if email:
+            if not email:
+                return Response(
+                    {
+                        "message": "Email is required"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-                existing_hr = HR.objects.filter(email=email).first()
+            # =========================
+            # CHECK EMAIL EXISTS
+            # =========================
+            existing_hr = HR.objects.filter(email=email).first()
 
-                if existing_hr:
+            if existing_hr:
+
+                # if already verified
+                if existing_hr.is_verified:
 
                     return Response(
                         {
-                            "message": "Email already registered"
+                            "message": "Email already registered and verified"
                         },
                         status=status.HTTP_400_BAD_REQUEST
                     )
+
+                # if not verified -> resend new otp
+                otp = str(random.randint(100000, 999999))
+
+                existing_hr.otp = otp
+                existing_hr.save()
+
+                send_mail(
+                    subject="Your OTP Verification Code",
+
+                    message=f"""
+Hello {existing_hr.first_name},
+
+Your new OTP verification code is:
+
+{otp}
+
+Your HR ID is:
+{existing_hr.hr_id}
+
+Thank You
+                    """,
+
+                    from_email=settings.EMAIL_HOST_USER,
+
+                    recipient_list=[existing_hr.email],
+
+                    fail_silently=False,
+                )
+
+                return Response(
+                    {
+                        "message": "User already exists but not verified. New OTP sent.",
+                        "email": existing_hr.email,
+                        "hr_id": existing_hr.hr_id,
+                        "otp_sent": True
+                    },
+                    status=status.HTTP_200_OK
+                )
 
             # =========================
             # GENERATE OTP
@@ -289,18 +530,18 @@ class HRSignupView(APIView):
 
                 otp=otp,
 
+                is_verified=False,
+
                 university=university,
             )
 
             # =========================
             # SEND OTP EMAIL
             # =========================
-            if hr.email:
+            send_mail(
+                subject="Your OTP Verification Code",
 
-                send_mail(
-                    subject="Your OTP Verification Code",
-
-                    message=f"""
+                message=f"""
 Hello {hr.first_name},
 
 Your OTP verification code is:
@@ -311,14 +552,14 @@ Your HR ID is:
 {hr.hr_id}
 
 Thank You
-                    """,
+                """,
 
-                    from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.EMAIL_HOST_USER,
 
-                    recipient_list=[hr.email],
+                recipient_list=[hr.email],
 
-                    fail_silently=False,
-                )
+                fail_silently=False,
+            )
 
             # =========================
             # SUCCESS RESPONSE
@@ -348,37 +589,254 @@ Thank You
             )
 
 
+# =========================================================
+# VERIFY OTP
+# =========================================================
+# class VerifyOTPView(APIView):
+
+#     def post(self, request):
+
+#         try:
+
+#             email = request.data.get("email")
+#             otp = request.data.get("otp")
+
+#             if not email or not otp:
+
+#                 return Response(
+#                     {
+#                         "error": "Email and OTP are required"
+#                     },
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
+
+#             hr = HR.objects.filter(email=email).first()
+
+#             if not hr:
+
+#                 return Response(
+#                     {
+#                         "error": "User not found"
+#                     },
+#                     status=status.HTTP_404_NOT_FOUND
+#                 )
+
+#             # =========================
+#             # VERIFY OTP
+#             # =========================
+#             if hr.otp == otp:
+
+#                 hr.is_verified = True
+#                 hr.otp = ""
+#                 hr.save()
+
+#                 return Response(
+#                     {
+#                         "message": "Email verified successfully",
+#                         "verified": True
+#                     },
+#                     status=status.HTTP_200_OK
+#                 )
+
+#             return Response(
+#                 {
+#                     "error": "Invalid OTP"
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         except Exception as e:
+
+#             return Response(
+#                 {
+#                     "message": "OTP verification failed",
+#                     "error": str(e)
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+
+
+
 class VerifyOTPView(APIView):
 
     def post(self, request):
 
-        email = request.data.get("email")
-        otp = request.data.get("otp")
-
         try:
-            hr = HR.objects.get(email=email)
 
-            if hr.otp == otp:
-                hr.is_verified = True
-                hr.otp = ""
-                hr.save()
+            # =========================
+            # GET DATA
+            # =========================
+            email = request.data.get("email", "").strip()
+            otp = request.data.get("otp", "").strip()
+
+            # =========================
+            # VALIDATION
+            # =========================
+            if not email or not otp:
 
                 return Response(
-                    {"message": "Email verified successfully"},
-                    status=status.HTTP_200_OK
+                    {
+                        "error": "Email and OTP are required"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            return Response(
-                {"error": "Invalid OTP"},
-                status=status.HTTP_400_BAD_REQUEST
+            # =========================
+            # FIND HR ACCOUNT
+            # =========================
+            hr = HR.objects.filter(
+                email__iexact=email
+            ).order_by("-id").first()
+
+            if not hr:
+
+                return Response(
+                    {
+                        "error": "User not found"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # =========================
+            # DEBUG
+            # =========================
+            print("DATABASE OTP :", hr.otp)
+            print("ENTERED OTP  :", otp)
+            print("BEFORE VERIFY:", hr.is_verified)
+
+            # =========================
+            # VERIFY OTP
+            # =========================
+            if str(hr.otp).strip() != str(otp).strip():
+
+                return Response(
+                    {
+                        "error": "Invalid OTP"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # =========================
+            # UPDATE DIRECTLY IN DATABASE
+            # =========================
+            HR.objects.filter(id=hr.id).update(
+                is_verified=True,
+                otp=""
             )
 
-        except HR.DoesNotExist:
+            # REFRESH OBJECT
+            hr.refresh_from_db()
+
+            print("AFTER VERIFY :", hr.is_verified)
+
+            # =========================
+            # SUCCESS RESPONSE
+            # =========================
             return Response(
-                {"error": "User not found"},
-                status=status.HTTP_404_NOT_FOUND
+                {
+                    "message": "Email verified successfully",
+                    "verified": hr.is_verified,
+                    "hr_id": hr.hr_id
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+
+            print("VERIFY OTP ERROR:", str(e))
+
+            return Response(
+                {
+                    "message": "OTP verification failed",
+                    "error": str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
             )
         
+        
+# =========================================================
+# RESEND OTP
+# =========================================================
+class HRResendOTPView(APIView):
+
+    def post(self, request):
+
+        try:
+
+            email = request.data.get("email")
+
+            if not email:
+
+                return Response(
+                    {
+                        "error": "Email is required"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            hr = HR.objects.filter(email=email).first()
+
+            if not hr:
+
+                return Response(
+                    {
+                        "error": "User not found"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # =========================
+            # GENERATE NEW OTP
+            # =========================
+            otp = str(random.randint(100000, 999999))
+
+            hr.otp = otp
+            hr.save()
+
+            # =========================
+            # SEND EMAIL
+            # =========================
+            send_mail(
+                subject="Resend OTP Verification Code",
+
+                message=f"""
+Hello {hr.first_name},
+
+Your new OTP verification code is:
+
+{otp}
+
+Your HR ID is:
+{hr.hr_id}
+
+Thank You
+                """,
+
+                from_email=settings.EMAIL_HOST_USER,
+
+                recipient_list=[hr.email],
+
+                fail_silently=False,
+            )
+
+            return Response(
+                {
+                    "message": "OTP resent successfully",
+                    "otp_sent": True
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+
+            return Response(
+                {
+                    "message": "Failed to resend OTP",
+                    "error": str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 from rest_framework.decorators import api_view
@@ -565,48 +1023,243 @@ class SendOTPView(APIView):
         })
 
 
-class VerifyOTPView(APIView):
+# class VerifyOTPView(APIView):
+
+#     def post(self, request):
+
+#         email = request.data.get("email")
+#         otp = request.data.get("otp")
+
+#         if not email or not otp:
+#             return Response(
+#                 {"error": "Email and OTP are required"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+
+#         try:
+#             employer = Employer.objects.get(email=email)
+
+#         except Employer.DoesNotExist:
+#             return Response(
+#                 {"error": "Employer not found"},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         if not employer.otp_is_valid():
+#             return Response(
+#                 {"error": "OTP expired"}
+#             )
+
+#         if employer.otp != otp:
+#             return Response(
+#                 {"error": "Invalid OTP"}
+#             )
+
+#         employer.is_email_verified = True
+
+#         employer.otp = None
+#         employer.otp_created_at = None
+
+#         employer.save()
+
+#         return Response({
+#             "message": "OTP verified successfully"
+#         })
+
+class EmployerVerifyOTPView(APIView):
 
     def post(self, request):
 
-        email = request.data.get("email")
-        otp = request.data.get("otp")
+        try:
 
-        if not email or not otp:
+            email = request.data.get("email")
+            otp = request.data.get("otp")
+
+            if not email or not otp:
+
+                return Response(
+                    {
+                        "error": "Email and OTP are required"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            employer = Employer.objects.filter(
+                email__iexact=email.strip()
+            ).first()
+
+            if not employer:
+
+                return Response(
+                    {
+                        "error": "Employer not found"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # OTP EXPIRED
+            if not employer.otp_is_valid():
+
+                return Response(
+                    {
+                        "error": "OTP expired"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # INVALID OTP
+            if str(employer.otp).strip() != str(otp).strip():
+
+                return Response(
+                    {
+                        "error": "Invalid OTP"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # VERIFIED
+            employer.is_email_verified = True
+            employer.otp = None
+            employer.otp_created_at = None
+
+            employer.save()
+
             return Response(
-                {"error": "Email and OTP are required"},
+                {
+                    "message": "Employer email verified successfully",
+                    "verified": True
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+
+            return Response(
+                {
+                    "error": str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+
+
+class HRVerifyOTPView(APIView):
+
+    def post(self, request):
+
+        try:
+
+            email = request.data.get("email")
+            otp = request.data.get("otp")
+
+            if not email or not otp:
+
+                return Response(
+                    {
+                        "error": "Email and OTP are required"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            hr = HR.objects.filter(
+                email__iexact=email.strip()
+            ).first()
+
+            if not hr:
+
+                return Response(
+                    {
+                        "error": "HR user not found"
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # VERIFY OTP
+            if str(hr.otp).strip() != str(otp).strip():
+
+                return Response(
+                    {
+                        "error": "Invalid OTP"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # UPDATE VERIFIED
+            HR.objects.filter(id=hr.id).update(
+                is_verified=True,
+                otp=""
+            )
+
+            return Response(
+                {
+                    "message": "HR email verified successfully",
+                    "verified": True
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+
+            return Response(
+                {
+                    "error": str(e)
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            employer = Employer.objects.get(email=email)
+# class EmployerSignupView(APIView):
 
-        except Employer.DoesNotExist:
-            return Response(
-                {"error": "Employer not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+#     def post(self, request):
 
-        if not employer.otp_is_valid():
-            return Response(
-                {"error": "OTP expired"}
-            )
+#         email = request.data.get("email")
 
-        if employer.otp != otp:
-            return Response(
-                {"error": "Invalid OTP"}
-            )
+#         if not email:
+#             return Response(
+#                 {"error": "Email is required"}
+#             )
 
-        employer.is_email_verified = True
+#         try:
+#             employer = Employer.objects.get(email=email)
 
-        employer.otp = None
-        employer.otp_created_at = None
+#         except Employer.DoesNotExist:
+#             return Response(
+#                 {"error": "Please verify email first"}
+#             )
 
-        employer.save()
+#         if not employer.is_email_verified:
+#             return Response(
+#                 {"error": "Email is not verified"}
+#             )
 
-        return Response({
-            "message": "OTP verified successfully"
-        })
+#         serializer = EmployerSignupSerializer(
+#             employer,
+#             data=request.data,
+#             partial=True
+#         )
+
+#         if serializer.is_valid():
+
+#             serializer.save()
+
+#             return Response({
+#                 "message": "Employer account created successfully",
+#                 "id": employer.id
+#             })
+
+#         return Response(
+#             serializer.errors,
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+
+
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import Employer
+from .serializers import EmployerSignupSerializer
 
 
 class EmployerSignupView(APIView):
@@ -617,7 +1270,8 @@ class EmployerSignupView(APIView):
 
         if not email:
             return Response(
-                {"error": "Email is required"}
+                {"error": "Email is required"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
@@ -625,12 +1279,17 @@ class EmployerSignupView(APIView):
 
         except Employer.DoesNotExist:
             return Response(
-                {"error": "Please verify email first"}
+                {"error": "Please verify email first"},
+                status=status.HTTP_404_NOT_FOUND
             )
 
+        # =========================
+        # CHECK EMAIL VERIFIED
+        # =========================
         if not employer.is_email_verified:
             return Response(
-                {"error": "Email is not verified"}
+                {"error": "Email is not verified"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         serializer = EmployerSignupSerializer(
@@ -645,15 +1304,17 @@ class EmployerSignupView(APIView):
 
             return Response({
                 "message": "Employer account created successfully",
-                "id": employer.id
+                "id": employer.id,
+                "employer_id": employer.employer_id
             })
 
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+    
 
-
+    
 class IndustrySectorListView(APIView):
 
     def get(self, request):
@@ -666,3 +1327,277 @@ class IndustrySectorListView(APIView):
         )
 
         return Response(serializer.data)
+    
+
+from django.contrib.auth.hashers import check_password
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import HR, Employer
+
+
+@api_view(["POST"])
+def signin(request):
+
+    identifier = request.data.get("identifier", "").strip()
+    password = request.data.get("password", "").strip()
+
+    # =========================
+    # VALIDATION
+    # =========================
+    if not identifier or not password:
+        return Response(
+            {
+                "error": "ID/email and password are required."
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    identifier_upper = identifier.upper()
+
+    # =========================================================
+    # LOGIN WITH HR ID
+    # =========================================================
+    if identifier_upper.startswith("HR"):
+
+        try:
+            hr = HR.objects.get(hr_id__iexact=identifier)
+
+        except HR.DoesNotExist:
+            return Response(
+                {
+                    "error": "Invalid HR ID or password."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # account verification check
+        if not hr.is_verified:
+            return Response(
+                {
+                    "error": "HR account not verified."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # password check
+        if not check_password(password, hr.password):
+            return Response(
+                {
+                    "error": "Invalid HR ID or password."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        return Response(
+            {
+                "success": True,
+                "role": "hr",
+
+                "hr_id": hr.hr_id,
+                "name": f"{hr.first_name} {hr.last_name}",
+                "email": hr.email,
+
+                "message": "HR login successful."
+            },
+            status=status.HTTP_200_OK
+        )
+
+    # =========================================================
+    # LOGIN WITH EMPLOYER ID
+    # =========================================================
+    elif identifier_upper.startswith("EM"):
+
+        try:
+            employer = Employer.objects.get(
+                employer_id__iexact=identifier
+            )
+
+        except Employer.DoesNotExist:
+            return Response(
+                {
+                    "error": "Invalid Employer ID or password."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # verification check
+        if not employer.is_email_verified:
+            return Response(
+                {
+                    "error": "Employer account not verified."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # password check
+        if not check_password(password, employer.password):
+            return Response(
+                {
+                    "error": "Invalid Employer ID or password."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        return Response(
+            {
+                "success": True,
+                "role": "employer",
+
+                "employer_id": employer.employer_id,
+                "name": employer.name,
+                "email": employer.email,
+                "company_name": employer.company_name,
+
+                "message": "Employer login successful."
+            },
+            status=status.HTTP_200_OK
+        )
+
+    # =========================================================
+    # LOGIN WITH EMAIL
+    # =========================================================
+    else:
+
+        # ---------- TRY HR EMAIL ----------
+        hr = HR.objects.filter(email__iexact=identifier).first()
+
+        if hr:
+
+            if not hr.is_verified:
+                return Response(
+                    {
+                        "error": "HR account not verified."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            if not check_password(password, hr.password):
+                return Response(
+                    {
+                        "error": "Invalid email or password."
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            return Response(
+                {
+                    "success": True,
+                    "role": "hr",
+
+                    "hr_id": hr.hr_id,
+                    "name": f"{hr.first_name} {hr.last_name}",
+                    "email": hr.email,
+
+                    "message": "HR login successful."
+                },
+                status=status.HTTP_200_OK
+            )
+
+        # ---------- TRY EMPLOYER EMAIL ----------
+        employer = Employer.objects.filter(
+            email__iexact=identifier
+        ).first()
+
+        if employer:
+
+            if not employer.is_email_verified:
+                return Response(
+                    {
+                        "error": "Employer account not verified."
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            if not check_password(password, employer.password):
+                return Response(
+                    {
+                        "error": "Invalid email or password."
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            return Response(
+                {
+                    "success": True,
+                    "role": "employer",
+
+                    "employer_id": employer.employer_id,
+                    "name": employer.name,
+                    "email": employer.email,
+                    "company_name": employer.company_name,
+
+                    "message": "Employer login successful."
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {
+                "error": "Account not found."
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+
+class HRProfileView(APIView):
+
+    def get(self, request, hr_id):
+
+        try:
+
+            hr = HR.objects.get(hr_id=hr_id)
+
+            serializer = HRProfileSerializer(hr)
+
+            return Response(
+                {
+                    "success": True,
+                    "data": serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except HR.DoesNotExist:
+
+            return Response(
+                {
+                    "error": "HR not found"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except Exception as e:
+
+            return Response(
+                {
+                    "error": str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+
+
+
+from django.shortcuts import get_object_or_404
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from .models import HR
+
+class HRDetailView(APIView):
+
+    def get(self, request, hr_id):
+
+        hr = get_object_or_404(HR, hr_id=hr_id)
+
+        students_count = hr.students.count()
+
+        return Response({
+            "hr_id": hr.hr_id,
+            "first_name": hr.first_name,
+            "last_name": hr.last_name,
+            "email": hr.email,
+            "phone": hr.phone,
+            "students_count": students_count,
+        })

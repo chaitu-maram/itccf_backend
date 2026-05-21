@@ -65,7 +65,9 @@ class Polytechnic(models.Model):
 
 from django.db import models
 
+
 class StudentProfile(models.Model):
+    
 
     # HR Information
     hr_name = models.CharField(max_length=100, blank=True, null=True)
@@ -165,6 +167,14 @@ class StudentProfile(models.Model):
 
     score = models.FloatField(default=0)
 
+    hr = models.ForeignKey(
+    "HR",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="students"
+)
+
     def __str__(self):
         return f"{self.name or 'No Name'} ({self.regn_no or 'No Reg'})"
     
@@ -190,59 +200,6 @@ class University(models.Model):
         return self.name
     
 from django.db import models
-
-
-# class HR(models.Model):
-#     CURRENT_YEAR_CHOICES = [
-#         ("1st Year", "1st Year"),
-#         ("2nd Year", "2nd Year"),
-#         ("3rd Year", "3rd Year"),
-#         ("4th Year", "4th Year"),
-#         ("5th Year", "5th Year"),
-#         ("Graduated", "Graduated"),
-#     ]
-
-#     first_name = models.CharField(max_length=100, blank=True, null=True)
-#     last_name = models.CharField(max_length=100, blank=True, null=True)
-
-#     # DD-MM-YYYY
-#     dob = models.CharField(max_length=20, blank=True, null=True)
-
-#     college_code = models.CharField(max_length=100, blank=True, null=True)
-#     college_name = models.CharField(max_length=255, blank=True, null=True)
-
-#     roll_number = models.CharField(max_length=100, blank=True, null=True)
-
-#     current_year = models.CharField(
-#         max_length=20,
-#         choices=CURRENT_YEAR_CHOICES,
-#         blank=True,
-#         null=True
-#     )
-
-#     college_state = models.CharField(max_length=100, blank=True, null=True)
-#     college_city = models.CharField(max_length=100, blank=True, null=True)
-
-#     phone = models.CharField(max_length=10, blank=True, null=True)
-#     email = models.EmailField(unique=True, blank=True, null=True)
-
-#     password = models.CharField(max_length=255, blank=True, null=True)
-
-#     # OTP
-#     otp = models.CharField(max_length=6, blank=True, null=True)
-#     is_verified = models.BooleanField(default=False)
-
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     university = models.ForeignKey(
-#         University,
-#         on_delete=models.SET_NULL,
-#         null=True,
-#         blank=True
-#     )
-#     def __str__(self):
-#         return f"{self.first_name} {self.last_name}"
-    
-
 
 
 from django.db import models
@@ -328,6 +285,9 @@ class HR(models.Model):
             # FORMAT:
             # HR1205260001
             self.hr_id = f"HR{today}{today_count:04d}"
+        if self.password and not self.password.startswith("pbkdf2_"):
+            self.password = make_password(self.password)
+    
 
         super().save(*args, **kwargs)
 
@@ -356,7 +316,26 @@ class IndustrySector(models.Model):
         return self.name
 
 
+
+
+
+from django.db import models
+from django.contrib.auth.hashers import make_password
+from django.utils import timezone
+from datetime import timedelta
+
+
 class Employer(models.Model):
+
+    # =========================
+    # EMPLOYER ID
+    # =========================
+    employer_id = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True
+    )
 
     name = models.CharField(max_length=255)
 
@@ -410,13 +389,38 @@ class Employer(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # =========================
+    # SAVE METHOD
+    # =========================
     def save(self, *args, **kwargs):
 
+        # =========================
+        # GENERATE EMPLOYER ID
+        # =========================
+        if not self.employer_id:
+
+            today = timezone.now().strftime("%d%m%y")
+
+            # COUNT TODAY RECORDS
+            today_count = Employer.objects.filter(
+                created_at__date=timezone.now().date()
+            ).count() + 1
+
+            # FORMAT:
+            # EM1605260001
+            self.employer_id = f"EM{today}{today_count:04d}"
+
+        # =========================
+        # HASH PASSWORD
+        # =========================
         if self.password and not self.password.startswith("pbkdf2_"):
             self.password = make_password(self.password)
 
         super().save(*args, **kwargs)
 
+    # =========================
+    # OTP VALIDATION
+    # =========================
     def otp_is_valid(self):
 
         if not self.otp or not self.otp_created_at:
@@ -427,4 +431,4 @@ class Employer(models.Model):
         return timezone.now() <= expiry_time
 
     def __str__(self):
-        return self.company_name
+        return f"{self.employer_id} - {self.company_name}"
