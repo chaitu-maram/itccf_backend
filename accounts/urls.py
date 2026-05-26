@@ -224,4 +224,11 @@ urlpatterns = [
     HRProfileView.as_view(),
 ),
 path("hr/<str:hr_id>/", HRDetailView.as_view()),
+path(
+    "hr/<str:hr_id>/",
+    HRDetailView.as_view(),
+    name="hr-detail"
+),
+
+path('students/', student_list, name='student_list'),
 ]

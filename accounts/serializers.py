@@ -74,14 +74,67 @@ class InterviewQuestionSerializer(serializers.ModelSerializer):
         fields = ['question']
 
 
+# class StudentProfileSerializer(serializers.ModelSerializer):
+#     questions = InterviewQuestionSerializer(many=True, read_only=True)
+
+#     class Meta:
+#         model = StudentProfile
+#         fields = '__all__'
+
+
+# from rest_framework import serializers
+
+# class StudentProfileSerializer(serializers.ModelSerializer):
+#     questions = InterviewQuestionSerializer(many=True, read_only=True)
+
+#     hr_name = serializers.SerializerMethodField()
+#     hr_id = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = StudentProfile
+#         fields = '__all__'
+
+#     def get_hr_name(self, obj):
+#         if obj.hr:
+#             return f"{obj.hr.first_name} {obj.hr.last_name}"
+#         return None
+
+#     def get_hr_id(self, obj):
+#         if obj.hr:
+#             return obj.hr.hr_id
+#         return None
+
+
 class StudentProfileSerializer(serializers.ModelSerializer):
-    questions = InterviewQuestionSerializer(many=True, read_only=True)
+
+    questions = InterviewQuestionSerializer(
+        many=True,
+        read_only=True
+    )
+
+    hr_name = serializers.SerializerMethodField()
+    hr_id = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentProfile
-        fields = '__all__'
+        fields = "__all__"
 
+    def get_hr_name(self, obj):
 
+        if obj.hr:
+            first = obj.hr.first_name or ""
+            last = obj.hr.last_name or ""
+
+            return f"{first} {last}".strip()
+
+        return ""
+
+    def get_hr_id(self, obj):
+
+        if obj.hr:
+            return obj.hr.hr_id
+
+        return ""
 from rest_framework import serializers
 from .models import HR
 
@@ -194,3 +247,15 @@ class HRProfileSerializer(serializers.ModelSerializer):
         last = obj.last_name or ""
 
         return f"{first} {last}".strip()
+    
+
+
+
+from rest_framework import serializers
+from .models import StudentProfile
+
+class StudentProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = StudentProfile
+        fields = '__all__'

@@ -904,7 +904,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 #             "student_name": student.name,
 #             "questions": questions
 #         })
-
+from .models import HR
 class StudentProfileViewSet(viewsets.ModelViewSet):
 
     queryset = StudentProfile.objects.all()
@@ -926,36 +926,83 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid score value'}, status=400)
         return Response({'student_id': student.id, 'score': student.score})
 
+    # @action(detail=True, methods=['get'])
+    # def generate_questions(self, request, pk=None):
+
+    #     student = self.get_object()
+
+    #     # delete old questions
+    #     InterviewQuestion.objects.filter(
+    #         student=student
+    #     ).delete()
+
+    #     # generate questions
+    #     questions = generate_ai_questions(student)
+
+    #     # save questions
+    #     for q in questions:
+
+    #         InterviewQuestion.objects.create(
+    #             student=student,
+    #             question=q
+    #         )
+
+
     @action(detail=True, methods=['get'])
     def generate_questions(self, request, pk=None):
 
         student = self.get_object()
 
         # delete old questions
-        InterviewQuestion.objects.filter(
-            student=student
-        ).delete()
+        InterviewQuestion.objects.filter(student=student).delete()
 
-        # generate questions
+        # generate new questions
         questions = generate_ai_questions(student)
 
-        # save questions
+        # save new questions
         for q in questions:
-
             InterviewQuestion.objects.create(
                 student=student,
                 question=q
             )
-
-        student.questions_ready = True
-        student.save()
 
         return Response({
             "student_id": student.id,
             "student_name": student.name,
             "questions": questions
         })
-    
+
+        serializer_class = StudentProfileSerializer
+
+    def get_queryset(self):
+
+        hr_id = self.request.query_params.get("hr_id")
+
+        if hr_id:
+            return StudentProfile.objects.filter(
+                id_no=hr_id
+            )
+
+        return StudentProfile.objects.all()
+    def perform_create(self, serializer):
+
+        hr_id = self.request.data.get("hr_id")
+
+        if hr_id:
+
+            hr = HR.objects.filter(hr_id=hr_id).first()
+
+            if hr:
+
+                serializer.save(
+                    hr=hr,
+                    hr_name=f"{hr.first_name} {hr.last_name}",
+                    id_no=hr.hr_id
+                )
+
+                return
+
+        serializer.save()
 
 
 import random
@@ -1601,3 +1648,23 @@ class HRDetailView(APIView):
             "phone": hr.phone,
             "students_count": students_count,
         })
+    
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import StudentProfile
+from .serializers import StudentProfileSerializer
+
+@api_view(['GET'])
+def student_list(request):
+
+    students = StudentProfile.objects.all().order_by('-id')
+
+    serializer = StudentProfileSerializer(
+        students,
+        many=True,
+        context={'request': request}
+    )
+
+    return Response(serializer.data)

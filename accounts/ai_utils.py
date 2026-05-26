@@ -201,7 +201,7 @@ import requests
 def generate_ai_questions(student):
 
     prompt = f"""
-Generate EXACTLY 3 interview multiple choice questions.
+Generate EXACTLY 5 interview multiple choice questions.
 
 Candidate Profile:
 - Academic: {student.academic}
@@ -213,7 +213,7 @@ Candidate Profile:
 - Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
 
 STRICT RULES:
-1. Generate EXACTLY 3 questions
+1. Generate EXACTLY 5 questions
 2. Each question must contain:
    - Question
    - A option
@@ -264,7 +264,7 @@ Answer: <letter>
                     "num_predict": 800
                 }
             },
-            timeout=120
+            timeout=500
         )
 
         print("✅ Response received")
@@ -292,11 +292,11 @@ Answer: <letter>
         print("PARSED QUESTIONS:", len(questions))
 
         # fallback if insufficient questions
-        if len(questions) < 3:
+        if len(questions) < 5:
             print("⚠️ Using fallback questions")
             return fallback_questions(student)
 
-        return questions[:3]
+        return questions[:5]
 
     except Exception as e:
 
