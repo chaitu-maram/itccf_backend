@@ -1651,20 +1651,181 @@ class HRDetailView(APIView):
     
 
 
-from rest_framework.decorators import api_view
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# from .models import StudentProfile
+# from .serializers import StudentProfileSerializer
+
+# @api_view(['GET'])
+# def student_list(request):
+
+#     students = StudentProfile.objects.all().order_by('-id')
+
+#     serializer = StudentProfileSerializer(
+#         students,
+#         many=True,
+#         context={'request': request}
+#     )
+
+#     return Response(serializer.data)
+
+# from rest_framework.views import APIView
+# from rest_framework.response import Response
+# from rest_framework import status
+# from .models import StudentProfile, Employer
+# from .serializers import StudentProfileSerializer
+
+# class StudentListView(APIView):
+#     def get(self, request):
+
+#         employer_id = request.query_params.get("employer_id")
+
+#         if not employer_id:
+#             return Response(
+#                 {"error": "Employer not identified."},
+#                 status=status.HTTP_401_UNAUTHORIZED
+#             )
+
+#         try:
+#             employer = Employer.objects.get(employer_id=employer_id)
+#         except Employer.DoesNotExist:
+#             return Response(
+#                 {"error": "Employer not found."},
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+
+#         # Match StudentProfile.pincode with Employer.company_pincode
+#         students = StudentProfile.objects.filter(
+#             pincode=employer.company_pincode
+#         )
+
+#         serializer = StudentProfileSerializer(
+#             students,
+#             many=True,
+#             context={"request": request}
+#         )
+
+#         return Response(serializer.data)
+
+
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import StudentProfile
+from rest_framework import status
+from .models import StudentProfile, Employer, Payment
 from .serializers import StudentProfileSerializer
 
-@api_view(['GET'])
-def student_list(request):
+class StudentListView(APIView):
+    def get(self, request):
 
-    students = StudentProfile.objects.all().order_by('-id')
+        employer_id = request.query_params.get("employer_id")
 
-    serializer = StudentProfileSerializer(
-        students,
-        many=True,
-        context={'request': request}
-    )
+        if not employer_id:
+            return Response(
+                {"error": "Employer not identified."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-    return Response(serializer.data)
+        try:
+            employer = Employer.objects.get(employer_id=employer_id)
+        except Employer.DoesNotExist:
+            return Response(
+                {"error": "Employer not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Match StudentProfile.pincode with Employer.company_pincode
+        students = StudentProfile.objects.filter(
+            pincode=employer.company_pincode
+        )
+
+        # Get student IDs this employer has already paid for
+        # (no status field on Payment model — all payment records = paid)
+        paid_student_ids = set(
+            Payment.objects.filter(
+                employer=employer
+            ).values_list("student_id", flat=True)
+        )
+
+        serializer = StudentProfileSerializer(
+            students,
+            many=True,
+            context={"request": request}
+        )
+
+        data = []
+        for student, row in zip(students, serializer.data):
+            row = dict(row)
+            row["is_unlocked"] = student.id in paid_student_ids
+            data.append(row)
+
+        response_payload = {
+            "employer": {
+                "employer_id":  employer.employer_id,
+                "name":         employer.name,
+                "company_name": employer.company_name,
+            },
+            "students": data,
+        }
+
+        return Response(response_payload)
+
+
+from .models import StudentProfile, Employer, Payment
+
+class PaymentConfirmView(APIView):
+    def post(self, request):
+
+        print("REQUEST DATA:", request.data)
+        
+        employer_id  = request.data.get("employer_id")
+        reference_id = request.data.get("reference_id")
+        student_ids  = request.data.get("student_ids", [])
+
+        if not employer_id:
+            return Response(
+                {"error": "employer_id is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not reference_id:
+            return Response(
+                {"error": "reference_id is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not student_ids:
+            return Response(
+                {"error": "student_ids is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            employer = Employer.objects.get(employer_id=employer_id)
+        except Employer.DoesNotExist:
+            return Response(
+                {"error": "Employer not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        created_count = 0
+        for sid in student_ids:
+            try:
+                student = StudentProfile.objects.get(id=sid)
+                # avoid duplicate payment records for same employer+student
+                _, created = Payment.objects.get_or_create(
+                    employer=employer,
+                    student=student,
+                    defaults={
+                        "amount": 50,  # adjust if RATE_PER_PERSON differs
+                    }
+                )
+                if created:
+                    created_count += 1
+            except StudentProfile.DoesNotExist:
+                continue  # skip invalid student IDs silently
+
+        return Response({
+            "success": True,
+            "message": f"{created_count} payment record(s) created.",
+            "employer_id": employer_id,
+            "reference_id": reference_id,
+            "student_ids": student_ids,
+        }, status=status.HTTP_201_CREATED)

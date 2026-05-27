@@ -174,6 +174,7 @@ class StudentProfile(models.Model):
     blank=True,
     related_name="students"
 )
+    pincode = models.CharField(max_length=6, blank=True, null=True)
 
     def __str__(self):
         return f"{self.name or 'No Name'} ({self.regn_no or 'No Reg'})"
@@ -432,3 +433,16 @@ class Employer(models.Model):
 
     def __str__(self):
         return f"{self.employer_id} - {self.company_name}"
+    
+
+# models.py
+class Payment(models.Model):
+    employer    = models.ForeignKey(Employer, on_delete=models.CASCADE)
+    student     = models.ForeignKey(StudentProfile, on_delete=models.CASCADE)
+    amount      = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    status      = models.CharField(
+        max_length=20,
+        choices=[("pending", "Pending"), ("success", "Success"), ("failed", "Failed")],
+        default="success"   # set to "pending" if you want manual confirmation
+    )

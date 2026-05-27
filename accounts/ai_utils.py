@@ -201,7 +201,7 @@ import requests
 def generate_ai_questions(student):
 
     prompt = f"""
-Generate EXACTLY 5 interview multiple choice questions.
+Generate EXACTLY 5 low level interview multiple choice questions.
 
 Candidate Profile:
 - Academic: {student.academic}
@@ -264,7 +264,7 @@ Answer: <letter>
                     "num_predict": 800
                 }
             },
-            timeout=500
+            timeout=300
         )
 
         print("✅ Response received")
