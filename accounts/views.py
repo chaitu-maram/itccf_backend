@@ -1776,7 +1776,7 @@ class PaymentConfirmView(APIView):
     def post(self, request):
 
         print("REQUEST DATA:", request.data)
-        
+
         employer_id  = request.data.get("employer_id")
         reference_id = request.data.get("reference_id")
         student_ids  = request.data.get("student_ids", [])
@@ -1829,3 +1829,133 @@ class PaymentConfirmView(APIView):
             "reference_id": reference_id,
             "student_ids": student_ids,
         }, status=status.HTTP_201_CREATED)
+    
+
+
+
+from django.http import HttpResponse, Http404
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from io import BytesIO
+from .models import StudentProfile
+
+def download_student_cv(request, student_id):
+    # Only allow unlocked access — verify employer
+    employer_id = request.GET.get("employer_id")
+    if not employer_id:
+        return HttpResponse("Unauthorized", status=401)
+
+    try:
+        student = StudentProfile.objects.get(pk=student_id)
+    except StudentProfile.DoesNotExist:
+        raise Http404
+
+    # ── Build PDF in memory ──────────────────────────────────────
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=20*mm, rightMargin=20*mm,
+        topMargin=20*mm, bottomMargin=20*mm
+    )
+
+    styles = getSampleStyleSheet()
+    BLUE   = colors.HexColor("#1D4ED8")
+    LBLUE  = colors.HexColor("#DBEAFE")
+    GRAY   = colors.HexColor("#64748B")
+    DARK   = colors.HexColor("#1E3A5F")
+
+    heading_style = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=20,
+                                   textColor=DARK, spaceAfter=2)
+    sub_style     = ParagraphStyle("s", fontName="Helvetica",      fontSize=11,
+                                   textColor=GRAY, spaceAfter=6)
+    section_style = ParagraphStyle("sec", fontName="Helvetica-Bold", fontSize=11,
+                                   textColor=BLUE, spaceBefore=14, spaceAfter=6)
+    body_style    = ParagraphStyle("b", fontName="Helvetica", fontSize=10,
+                                   textColor=DARK, leading=16)
+
+    def section(title):
+        return [
+            Paragraph(title.upper(), section_style),
+            HRFlowable(width="100%", thickness=0.5, color=LBLUE, spaceAfter=6),
+        ]
+
+    def row(label, value):
+        """Two-column label/value row."""
+        return Table(
+            [[Paragraph(f"<b>{label}</b>", body_style),
+              Paragraph(value or "—", body_style)]],
+            colWidths=[55*mm, 115*mm],
+            style=TableStyle([
+                ("VALIGN", (0,0), (-1,-1), "TOP"),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ])
+        )
+
+    # ── Field helpers ────────────────────────────────────────────
+    full_name = f"{student.surname or ''} {student.name or ''}".strip() or "—"
+    field = (student.core_spec_v1 or student.technical_v1
+             or student.non_tech_v1 or student.general_cat_v1 or "—")
+    exp   = f"{student.experience_years or '0'} yrs {student.experience_months or '0'} months"
+
+    story = []
+
+    # ── Header block ─────────────────────────────────────────────
+    story.append(Paragraph(full_name, heading_style))
+    # story.append(Paragraph(
+    #     f"{student.designation or 'Candidate'}  ·  {student.company_name or 'Fresher'}",
+    #     sub_style
+    # ))
+    story.append(Spacer(1, 4*mm))
+
+    # ── Personal details ─────────────────────────────────────────
+    story += section("Personal Details")
+    story.append(row("Date of Birth",   str(student.dob) if student.dob else "—"))
+    story.append(row("Father / Mother", student.father_mother_name))
+    story.append(row("Blood Group",     student.blood_group))
+    story.append(row("Address",
+        ", ".join(filter(None, [
+            student.h_no, student.street_colony,
+            student.area, student.district,
+            student.pincode
+        ])) or "—"
+    ))
+    story.append(row("Mobile",          student.mobile_personal))
+    story.append(row("Email",           student.email))
+
+    # ── Qualification ────────────────────────────────────────────
+    story += section("Qualification")
+    story.append(row("Academic",           student.academic))
+    story.append(row("Specialization",     student.specialization))
+    story.append(row("Additional Qual.",   student.additional_qualification))
+    story.append(row("Driving Licence",    student.driving_licence))
+    story.append(row("Extra Curricular",   student.extra_curricular))
+
+    # ── Experience ───────────────────────────────────────────────
+    story += section("Work Experience")
+    story.append(row("Experience",         exp))
+    story.append(row("Company",            student.company_name))
+    story.append(row("Designation",        student.designation))
+    story.append(row("Last Salary",        student.last_salary))
+    story.append(row("Reason for Leaving", student.reason_leaving))
+    story.append(row("Tech Stack",         student.tech_stack))
+
+    # ── Job Preferences ──────────────────────────────────────────
+    story += section("Job Preferences")
+    story.append(row("Interested Field",   field))
+    story.append(row("Job Type",           student.job_type))
+    story.append(row("Core Spec.",         student.core_spec_v1))
+    story.append(row("Technical",          student.technical_v1))
+    story.append(row("Non-Technical",      student.non_tech_v1))
+    story.append(row("Job Nature",         student.job_nature_v1))
+
+    doc.build(story)
+
+    buffer.seek(0)
+    safe_name = full_name.replace(" ", "_")
+    response = HttpResponse(buffer, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="CV_{safe_name}.pdf"'
+    return response

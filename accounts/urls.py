@@ -240,6 +240,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import *
+from django.urls import path
+from . import views
 
 # =========================
 # ROUTER
@@ -327,4 +329,8 @@ urlpatterns = [
     path("universities/", get_universities,              name="universities"),
     path("industries/",   IndustrySectorListView.as_view(), name="industries"),
     path("signin/",       signin,                        name="signin"),
+
+
+    # CORRECT ✅
+path("students/<int:student_id>/cv/", views.download_student_cv, name="student_cv"),
 ]
