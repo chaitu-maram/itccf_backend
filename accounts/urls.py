@@ -237,9 +237,110 @@
 
 
 
+# from django.urls import path, include
+# from rest_framework.routers import DefaultRouter
+# from .views import *
+# from .views import PaymentConfirmView
+# from django.urls import path
+# from . import views
+
+# # =========================
+# # ROUTER
+# # =========================
+# router = DefaultRouter()
+# router.register(r"students", StudentProfileViewSet)
+
+# # =========================
+# # URL PATTERNS
+# # =========================
+# urlpatterns = [
+
+#     # =========================
+#     # STUDENTS
+#     # =========================
+#     path("students/filter/", StudentListView.as_view(), name="student-list-filtered"),
+#     path("", include(router.urls)),
+
+#     # =========================
+#     # ITI
+#     # =========================
+#     path("iti/", ITIListCreateView.as_view()),
+#     path("iti/<int:pk>/", ITIDetailView.as_view()),
+
+#     # =========================
+#     # UG
+#     # =========================
+#     path("ug/", UGListCreateView.as_view()),
+#     path("ug/<int:pk>/", UGDetailView.as_view()),
+
+#     # =========================
+#     # PG
+#     # =========================
+#     path("pg/", PGListCreateView.as_view()),
+#     path("pg/<int:pk>/", PGDetailView.as_view()),
+
+#     # =========================
+#     # POLYTECHNIC
+#     # =========================
+#     path("polytechnic/", PolytechnicListCreateView.as_view()),
+#     path("polytechnic/<int:pk>/", PolytechnicDetailView.as_view()),
+
+#     # =========================
+#     # INTERMEDIATE
+#     # =========================
+#     path("intermediate/", IntermediateListCreateView.as_view()),
+#     path("intermediate/<int:pk>/", IntermediateDetailView.as_view()),
+
+#     # =========================
+#     # VOCATIONAL
+#     # =========================
+#     path("vocational/", VocationalListCreateView.as_view()),
+#     path("vocational/<int:pk>/", VocationalDetailView.as_view()),
+
+#     # =========================
+#     # DEGREE
+#     # =========================
+#     path("degree/", DegreeListCreateView.as_view()),
+#     path("degree/<int:pk>/", DegreeDetailView.as_view()),
+
+#     # =========================================================
+#     # HR ROUTES — specific paths MUST come before hr/<str:hr_id>/
+#     # =========================================================
+#     path("hr/signup/",        HRSignupView.as_view(),      name="hr-signup"),
+#     path("hr/verify-otp/",    HRVerifyOTPView.as_view(),   name="hr-verify-otp"),
+#     path("hr/resend-otp/",    HRResendOTPView.as_view(),   name="hr-resend-otp"),
+#     path("hr/profile/<str:hr_id>/", HRProfileView.as_view(), name="hr-profile"),
+
+#     # ↓↓↓ payment-confirm MUST be before hr/<str:hr_id>/ catch-all ↓↓↓
+#     path("hr/payment-confirm/", PaymentConfirmView.as_view(), name="hr-payment-confirm"),
+
+#     # ↓ catch-all — always keep this LAST among hr/ routes ↓
+#     path("hr/<str:hr_id>/",   HRDetailView.as_view(),      name="hr-detail"),
+
+#     # =========================================================
+#     # EMPLOYER ROUTES
+#     # =========================================================
+#     path("employer/send-otp/",   SendOTPView.as_view(),           name="employer-send-otp"),
+#     path("employer/verify-otp/", EmployerVerifyOTPView.as_view(), name="employer-verify-otp"),
+#     path("employer/signup/",     EmployerSignupView.as_view(),    name="employer-signup"),
+
+#     # =========================================================
+#     # COMMON
+#     # =========================================================
+#     path("universities/", get_universities,              name="universities"),
+#     path("industries/",   IndustrySectorListView.as_view(), name="industries"),
+#     path("signin/",       signin,                        name="signin"),
+
+
+#     # CORRECT ✅
+# path("students/<int:student_id>/cv/", views.download_student_cv, name="student_cv"),
+# ]
+
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import *
+from .views import PaymentConfirmView
 from django.urls import path
 from . import views
 
@@ -256,8 +357,13 @@ urlpatterns = [
 
     # =========================
     # STUDENTS
+    # ── These MUST come before include(router.urls) ──
+    # The router registers students/ and would swallow these if placed after.
     # =========================
-    path("students/filter/", StudentListView.as_view(), name="student-list-filtered"),
+    path("students/filter/", StudentListView.as_view(),    name="student-list-filtered"),
+    path("students/",        StudentListAllView.as_view(), name="student-list-all"),  # ← NEW
+
+    # Router last — handles students/<pk>/, students/<pk>/generate_questions/, etc.
     path("", include(router.urls)),
 
     # =========================
@@ -326,11 +432,9 @@ urlpatterns = [
     # =========================================================
     # COMMON
     # =========================================================
-    path("universities/", get_universities,              name="universities"),
+    path("universities/", get_universities,                 name="universities"),
     path("industries/",   IndustrySectorListView.as_view(), name="industries"),
-    path("signin/",       signin,                        name="signin"),
+    path("signin/",       signin,                           name="signin"),
 
-
-    # CORRECT ✅
-path("students/<int:student_id>/cv/", views.download_student_cv, name="student_cv"),
+    path("students/<int:student_id>/cv/", views.download_student_cv, name="student_cv"),
 ]

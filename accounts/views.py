@@ -114,40 +114,6 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
 
 
 
-# from rest_framework import viewsets
-# from rest_framework.decorators import action
-# from rest_framework.response import Response
-
-# from .models import StudentProfile, InterviewQuestion
-# from .serializers import StudentProfileSerializer
-# from .ai_utils import generate_ai_questions
-
-
-# class StudentProfileViewSet(viewsets.ModelViewSet):
-#     queryset = StudentProfile.objects.all()
-#     serializer_class = StudentProfileSerializer
-
-#     @action(detail=True, methods=['get'])
-#     def generate_questions(self, request, pk=None):
-#         student = self.get_object()
-
-#         # delete old questions
-#         InterviewQuestion.objects.filter(student=student).delete()
-
-#         # ✅ correct function call
-#         questions = generate_ai_questions(student)
-
-#         # save new questions
-#         for q in questions:
-#             InterviewQuestion.objects.create(student=student, question=q)
-
-#         return Response({
-#             "student_id": student.id,
-#             "student_name": student.name,
-#             "questions": questions
-#         })
-    
-
 
 
 
@@ -164,49 +130,6 @@ from .models import HR
 from .serializers import HRSignupSerializer
 
 
-# class HRSignupView(APIView):
-
-#     def post(self, request):
-
-#         data = request.data
-
-#         # generate otp
-#         otp = str(random.randint(100000, 999999))
-
-#         # save user
-#         hr = HR.objects.create(
-#             first_name=data.get("first_name"),
-#             last_name=data.get("last_name"),
-#             dob=data.get("dob"),
-#             college_code=data.get("college_code"),
-#             college_name=data.get("college_name"),
-#             roll_number=data.get("roll_number"),
-#             current_year=data.get("current_year"),
-#             college_state=data.get("college_state"),
-#             college_city=data.get("college_city"),
-#             phone=data.get("phone"),
-#             email=data.get("email"),
-#             password=data.get("password"),
-#             otp=otp,
-#         )
-
-#         # send otp mail
-#         send_mail(
-#             subject="Your OTP Verification Code",
-#             message=f"Your OTP is: {otp}",
-#             from_email=settings.EMAIL_HOST_USER,
-#             recipient_list=[hr.email],
-#             fail_silently=False,
-#         )
-
-#         return Response(
-#             {
-#                 "message": "Signup successful. OTP sent to email.",
-#                 "email": hr.email
-#             },
-#             status=status.HTTP_201_CREATED
-#         )
-
 
 
 from rest_framework.views import APIView
@@ -219,173 +142,6 @@ from django.conf import settings
 from .models import HR, University
 
 import random
-
-
-# class HRSignupView(APIView):
-
-#     def post(self, request):
-
-#         try:
-
-#             data = request.data
-
-#             # =========================
-#             # CHECK EMAIL EXISTS
-#             # =========================
-#             email = data.get("email")
-
-#             if email:
-
-#                 existing_hr = HR.objects.filter(email=email).first()
-
-#                 if existing_hr:
-
-#                     return Response(
-#                         {
-#                             "message": "Email already registered"
-#                         },
-#                         status=status.HTTP_400_BAD_REQUEST
-#                     )
-
-#             # =========================
-#             # GENERATE OTP
-#             # =========================
-#             otp = str(random.randint(100000, 999999))
-
-#             # =========================
-#             # UNIVERSITY
-#             # =========================
-#             university = None
-
-#             university_id = data.get("university")
-
-#             if university_id:
-
-#                 university = University.objects.filter(
-#                     id=university_id
-#                 ).first()
-
-#             # =========================
-#             # CREATE HR
-#             # =========================
-#             hr = HR.objects.create(
-
-#                 first_name=data.get("first_name"),
-
-#                 last_name=data.get("last_name"),
-
-#                 dob=data.get("dob"),
-
-#                 college_code=data.get("college_code"),
-
-#                 college_name=data.get("college_name"),
-
-#                 roll_number=data.get("roll_number"),
-
-#                 current_year=data.get("current_year"),
-
-#                 college_state=data.get("college_state"),
-
-#                 college_city=data.get("college_city"),
-
-#                 phone=data.get("phone"),
-
-#                 email=email,
-
-#                 password=data.get("password"),
-
-#                 otp=otp,
-
-#                 university=university,
-#             )
-
-#             # =========================
-#             # SEND OTP EMAIL
-#             # =========================
-#             if hr.email:
-
-#                 send_mail(
-#                     subject="Your OTP Verification Code",
-
-#                     message=f"""
-# Hello {hr.first_name},
-
-# Your OTP verification code is:
-
-# {otp}
-
-# Your HR ID is:
-# {hr.hr_id}
-
-# Thank You
-#                     """,
-
-#                     from_email=settings.EMAIL_HOST_USER,
-
-#                     recipient_list=[hr.email],
-
-#                     fail_silently=False,
-#                 )
-
-#             # =========================
-#             # SUCCESS RESPONSE
-#             # =========================
-#             return Response(
-#                 {
-#                     "message": "Signup successful. OTP sent to email.",
-
-#                     "hr_id": hr.hr_id,
-
-#                     "email": hr.email,
-
-#                     "otp_sent": True,
-#                 },
-#                 status=status.HTTP_201_CREATED
-#             )
-
-#         except Exception as e:
-
-#             return Response(
-#                 {
-#                     "message": "Signup failed",
-
-#                     "error": str(e)
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-
-# class VerifyOTPView(APIView):
-
-#     def post(self, request):
-
-#         email = request.data.get("email")
-#         otp = request.data.get("otp")
-
-#         try:
-#             hr = HR.objects.get(email=email)
-
-#             if hr.otp == otp:
-#                 hr.is_verified = True
-#                 hr.otp = ""
-#                 hr.save()
-
-#                 return Response(
-#                     {"message": "Email verified successfully"},
-#                     status=status.HTTP_200_OK
-#                 )
-
-#             return Response(
-#                 {"error": "Invalid OTP"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         except HR.DoesNotExist:
-#             return Response(
-#                 {"error": "User not found"},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-
 
 
 
@@ -587,74 +343,6 @@ Thank You
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-
-# =========================================================
-# VERIFY OTP
-# =========================================================
-# class VerifyOTPView(APIView):
-
-#     def post(self, request):
-
-#         try:
-
-#             email = request.data.get("email")
-#             otp = request.data.get("otp")
-
-#             if not email or not otp:
-
-#                 return Response(
-#                     {
-#                         "error": "Email and OTP are required"
-#                     },
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             hr = HR.objects.filter(email=email).first()
-
-#             if not hr:
-
-#                 return Response(
-#                     {
-#                         "error": "User not found"
-#                     },
-#                     status=status.HTTP_404_NOT_FOUND
-#                 )
-
-#             # =========================
-#             # VERIFY OTP
-#             # =========================
-#             if hr.otp == otp:
-
-#                 hr.is_verified = True
-#                 hr.otp = ""
-#                 hr.save()
-
-#                 return Response(
-#                     {
-#                         "message": "Email verified successfully",
-#                         "verified": True
-#                     },
-#                     status=status.HTTP_200_OK
-#                 )
-
-#             return Response(
-#                 {
-#                     "error": "Invalid OTP"
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         except Exception as e:
-
-#             return Response(
-#                 {
-#                     "message": "OTP verification failed",
-#                     "error": str(e)
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
 
 
 
@@ -871,39 +559,6 @@ from .serializers import StudentProfileSerializer
 from .ai_utils import generate_ai_questions
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-
-# class StudentProfileViewSet(viewsets.ModelViewSet):
-
-#     queryset = StudentProfile.objects.all()
-
-#     serializer_class = StudentProfileSerializer
-
-#     # IMPORTANT FOR IMAGE UPLOADS
-#     parser_classes = [MultiPartParser, FormParser]
-
-#     @action(detail=True, methods=['get'])
-#     def generate_questions(self, request, pk=None):
-
-#         student = self.get_object()
-
-#         # delete old questions
-#         InterviewQuestion.objects.filter(student=student).delete()
-
-#         # generate new questions
-#         questions = generate_ai_questions(student)
-
-#         # save new questions
-#         for q in questions:
-#             InterviewQuestion.objects.create(
-#                 student=student,
-#                 question=q
-#             )
-
-#         return Response({
-#             "student_id": student.id,
-#             "student_name": student.name,
-#             "questions": questions
-#         })
 from .models import HR
 class StudentProfileViewSet(viewsets.ModelViewSet):
 
@@ -926,26 +581,6 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid score value'}, status=400)
         return Response({'student_id': student.id, 'score': student.score})
 
-    # @action(detail=True, methods=['get'])
-    # def generate_questions(self, request, pk=None):
-
-    #     student = self.get_object()
-
-    #     # delete old questions
-    #     InterviewQuestion.objects.filter(
-    #         student=student
-    #     ).delete()
-
-    #     # generate questions
-    #     questions = generate_ai_questions(student)
-
-    #     # save questions
-    #     for q in questions:
-
-    #         InterviewQuestion.objects.create(
-    #             student=student,
-    #             question=q
-    #         )
 
 
     @action(detail=True, methods=['get'])
@@ -1059,7 +694,14 @@ class SendOTPView(APIView):
 
         send_mail(
             subject="Employer Registration OTP",
-            message=f"Your OTP is {otp}",
+            # message=f"Your OTP is {otp}",
+            message=f"""
+Your OTP is {otp}
+
+Your Employer ID is {employer.employer_id}
+
+Thank You
+""",
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[email],
             fail_silently=False
@@ -1070,58 +712,21 @@ class SendOTPView(APIView):
         })
 
 
-# class VerifyOTPView(APIView):
-
-#     def post(self, request):
-
-#         email = request.data.get("email")
-#         otp = request.data.get("otp")
-
-#         if not email or not otp:
-#             return Response(
-#                 {"error": "Email and OTP are required"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         try:
-#             employer = Employer.objects.get(email=email)
-
-#         except Employer.DoesNotExist:
-#             return Response(
-#                 {"error": "Employer not found"},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-
-#         if not employer.otp_is_valid():
-#             return Response(
-#                 {"error": "OTP expired"}
-#             )
-
-#         if employer.otp != otp:
-#             return Response(
-#                 {"error": "Invalid OTP"}
-#             )
-
-#         employer.is_email_verified = True
-
-#         employer.otp = None
-#         employer.otp_created_at = None
-
-#         employer.save()
-
-#         return Response({
-#             "message": "OTP verified successfully"
-#         })
-
 class EmployerVerifyOTPView(APIView):
 
     def post(self, request):
 
         try:
 
+            # =========================
+            # GET DATA
+            # =========================
             email = request.data.get("email")
             otp = request.data.get("otp")
 
+            # =========================
+            # VALIDATION
+            # =========================
             if not email or not otp:
 
                 return Response(
@@ -1131,6 +736,9 @@ class EmployerVerifyOTPView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # =========================
+            # FIND EMPLOYER
+            # =========================
             employer = Employer.objects.filter(
                 email__iexact=email.strip()
             ).first()
@@ -1144,7 +752,9 @@ class EmployerVerifyOTPView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # OTP EXPIRED
+            # =========================
+            # CHECK OTP EXPIRY
+            # =========================
             if not employer.otp_is_valid():
 
                 return Response(
@@ -1154,7 +764,9 @@ class EmployerVerifyOTPView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # INVALID OTP
+            # =========================
+            # CHECK OTP MATCH
+            # =========================
             if str(employer.otp).strip() != str(otp).strip():
 
                 return Response(
@@ -1164,17 +776,27 @@ class EmployerVerifyOTPView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # VERIFIED
+            # =========================
+            # VERIFY EMPLOYER
+            # =========================
             employer.is_email_verified = True
             employer.otp = None
             employer.otp_created_at = None
 
             employer.save()
 
+            # =========================
+            # SUCCESS RESPONSE
+            # =========================
             return Response(
                 {
                     "message": "Employer email verified successfully",
-                    "verified": True
+
+                    "verified": True,
+
+                    "employer_id": employer.employer_id,
+
+                    "email": employer.email
                 },
                 status=status.HTTP_200_OK
             )
@@ -1188,7 +810,6 @@ class EmployerVerifyOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-
 
 class HRVerifyOTPView(APIView):
 
@@ -1253,50 +874,6 @@ class HRVerifyOTPView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-# class EmployerSignupView(APIView):
-
-#     def post(self, request):
-
-#         email = request.data.get("email")
-
-#         if not email:
-#             return Response(
-#                 {"error": "Email is required"}
-#             )
-
-#         try:
-#             employer = Employer.objects.get(email=email)
-
-#         except Employer.DoesNotExist:
-#             return Response(
-#                 {"error": "Please verify email first"}
-#             )
-
-#         if not employer.is_email_verified:
-#             return Response(
-#                 {"error": "Email is not verified"}
-#             )
-
-#         serializer = EmployerSignupSerializer(
-#             employer,
-#             data=request.data,
-#             partial=True
-#         )
-
-#         if serializer.is_valid():
-
-#             serializer.save()
-
-#             return Response({
-#                 "message": "Employer account created successfully",
-#                 "id": employer.id
-#             })
-
-#         return Response(
-#             serializer.errors,
-#             status=status.HTTP_400_BAD_REQUEST
-#         )
 
 
 
@@ -1651,62 +1228,6 @@ class HRDetailView(APIView):
     
 
 
-# from rest_framework.decorators import api_view
-# from rest_framework.response import Response
-# from .models import StudentProfile
-# from .serializers import StudentProfileSerializer
-
-# @api_view(['GET'])
-# def student_list(request):
-
-#     students = StudentProfile.objects.all().order_by('-id')
-
-#     serializer = StudentProfileSerializer(
-#         students,
-#         many=True,
-#         context={'request': request}
-#     )
-
-#     return Response(serializer.data)
-
-# from rest_framework.views import APIView
-# from rest_framework.response import Response
-# from rest_framework import status
-# from .models import StudentProfile, Employer
-# from .serializers import StudentProfileSerializer
-
-# class StudentListView(APIView):
-#     def get(self, request):
-
-#         employer_id = request.query_params.get("employer_id")
-
-#         if not employer_id:
-#             return Response(
-#                 {"error": "Employer not identified."},
-#                 status=status.HTTP_401_UNAUTHORIZED
-#             )
-
-#         try:
-#             employer = Employer.objects.get(employer_id=employer_id)
-#         except Employer.DoesNotExist:
-#             return Response(
-#                 {"error": "Employer not found."},
-#                 status=status.HTTP_404_NOT_FOUND
-#             )
-
-#         # Match StudentProfile.pincode with Employer.company_pincode
-#         students = StudentProfile.objects.filter(
-#             pincode=employer.company_pincode
-#         )
-
-#         serializer = StudentProfileSerializer(
-#             students,
-#             many=True,
-#             context={"request": request}
-#         )
-
-#         return Response(serializer.data)
-
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -1831,6 +1352,169 @@ class PaymentConfirmView(APIView):
         }, status=status.HTTP_201_CREATED)
     
 
+ 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import StudentProfile, Employer, Payment
+from .serializers import StudentProfileSerializer
+ 
+ 
+def get_unlocked_ids(employer_id: str) -> set:
+    """Return the set of student PKs this employer has already paid for."""
+    try:
+        employer = Employer.objects.get(employer_id=employer_id)
+    except Employer.DoesNotExist:
+        return set()
+    return set(
+        Payment.objects
+        .filter(employer=employer)
+        .values_list("student_id", flat=True)
+    )
+ 
+ 
+# /api/students/filter/  — students matching employer's pincode
+class StudentListView(APIView):
+    def get(self, request):
+ 
+        employer_id = request.query_params.get("employer_id")
+ 
+        if not employer_id:
+            return Response(
+                {"error": "Employer not identified."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+ 
+        try:
+            employer = Employer.objects.get(employer_id=employer_id)
+        except Employer.DoesNotExist:
+            return Response(
+                {"error": "Employer not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+ 
+        # Students in employer's pincode area
+        students = StudentProfile.objects.filter(
+            pincode=employer.company_pincode
+        )
+ 
+        # All student IDs this employer has paid for (across ALL students, not just pincode)
+        paid_student_ids = get_unlocked_ids(employer_id)
+ 
+        serializer = StudentProfileSerializer(
+            students,
+            many=True,
+            context={"request": request}
+        )
+ 
+        data = []
+        for student, row in zip(students, serializer.data):
+            row = dict(row)
+            row["is_unlocked"] = student.id in paid_student_ids
+            data.append(row)
+ 
+        return Response({
+            "employer": {
+                "employer_id":  employer.employer_id,
+                "name":         employer.name,
+                "company_name": employer.company_name,
+            },
+            "students": data,
+        })
+ 
+ 
+# /api/students/  — ALL students across all locations
+class StudentListAllView(APIView):
+    def get(self, request):
+ 
+        # WITH this:
+        employer_id = request.query_params.get("employer_id")
+        hr_id       = request.query_params.get("hr_id")
+
+        if not employer_id and not hr_id:
+            return Response(
+                {"error": "employer_id or hr_id is required."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        students = StudentProfile.objects.all().order_by("-created_at")
+
+        # Unlock logic only applies to employers — HR sees all data unlocked
+        if employer_id:
+            try:
+                Employer.objects.get(employer_id=employer_id)
+            except Employer.DoesNotExist:
+                return Response({"error": "Employer not found."}, status=status.HTTP_404_NOT_FOUND)
+            paid_student_ids = get_unlocked_ids(employer_id)
+        else:
+            # HR users only see their own registered students
+            try:
+                hr = HR.objects.get(hr_id=hr_id)
+            except HR.DoesNotExist:
+                return Response({"error": "HR not found."}, status=status.HTTP_404_NOT_FOUND)
+            students = StudentProfile.objects.filter(id_no=hr_id).order_by("-created_at")
+            paid_student_ids = set(students.values_list("id", flat=True))  # all unlocked for HR
+
+            
+        serializer = StudentProfileSerializer(
+            students,
+            many=True,
+            context={"request": request}
+        )
+ 
+        data = []
+        for student, row in zip(students, serializer.data):
+            row = dict(row)
+            row["is_unlocked"] = student.id in paid_student_ids
+            data.append(row)
+ 
+        return Response(data)
+ 
+ 
+# /api/hr/payment-confirm/
+class PaymentConfirmView(APIView):
+    def post(self, request):
+ 
+        print("REQUEST DATA:", request.data)
+ 
+        employer_id  = request.data.get("employer_id")
+        reference_id = request.data.get("reference_id")
+        student_ids  = request.data.get("student_ids", [])
+ 
+        if not employer_id:
+            return Response({"error": "employer_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not reference_id:
+            return Response({"error": "reference_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not student_ids:
+            return Response({"error": "student_ids is required."}, status=status.HTTP_400_BAD_REQUEST)
+ 
+        try:
+            employer = Employer.objects.get(employer_id=employer_id)
+        except Employer.DoesNotExist:
+            return Response({"error": "Employer not found."}, status=status.HTTP_404_NOT_FOUND)
+ 
+        created_count = 0
+        for sid in student_ids:
+            try:
+                student = StudentProfile.objects.get(id=sid)
+                _, created = Payment.objects.get_or_create(
+                    employer=employer,
+                    student=student,
+                    defaults={"amount": 50},
+                )
+                if created:
+                    created_count += 1
+            except StudentProfile.DoesNotExist:
+                continue
+ 
+        return Response({
+            "success":      True,
+            "message":      f"{created_count} payment record(s) created.",
+            "employer_id":  employer_id,
+            "reference_id": reference_id,
+            "student_ids":  student_ids,
+        }, status=status.HTTP_201_CREATED)
+ 
 
 
 from django.http import HttpResponse, Http404
