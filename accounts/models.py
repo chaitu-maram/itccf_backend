@@ -259,6 +259,7 @@ class HR(models.Model):
 
     # OTP
     otp = models.CharField(max_length=6, blank=True, null=True)
+    otp_created_at = models.DateTimeField(blank=True, null=True)
 
     is_verified = models.BooleanField(default=False)
 
@@ -270,6 +271,13 @@ class HR(models.Model):
         null=True,
         blank=True
     )
+
+    def otp_is_valid(self):
+        if not self.otp or not self.otp_created_at:
+            return False
+        from datetime import timedelta
+        from django.utils import timezone
+        return timezone.now() <= self.otp_created_at + timedelta(minutes=5)
 
     def save(self, *args, **kwargs):
 
@@ -446,3 +454,21 @@ class Payment(models.Model):
         choices=[("pending", "Pending"), ("success", "Success"), ("failed", "Failed")],
         default="success"   # set to "pending" if you want manual confirmation
     )
+
+class JobPosting(models.Model):
+    employer = models.ForeignKey(
+        Employer,
+        on_delete=models.CASCADE,
+        related_name="job_postings",
+        null=True,      # add this
+        blank=True      # add this
+    )
+    role = models.CharField(max_length=150)
+    org = models.CharField(max_length=150)
+    vacancies = models.PositiveIntegerField(default=1)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.role} at {self.org}"

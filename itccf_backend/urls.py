@@ -19,11 +19,17 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
+from accounts.views import send_otp, verify_otp, reset_password
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/', include('accounts.urls')),
+
+    path("api/forgot-password/send-otp/",  send_otp,       name="fp_send_otp"),
+    path("api/forgot-password/verify-otp/", verify_otp,    name="fp_verify_otp"),
+    path("api/forgot-password/reset/",      reset_password, name="fp_reset_password"),
+
 ]
 
 urlpatterns += static(

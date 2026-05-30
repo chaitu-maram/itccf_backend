@@ -454,36 +454,97 @@ class EmployerSignupSerializer(serializers.ModelSerializer):
         return value
 
 
+
+# class JobPostingSerializer(serializers.ModelSerializer):
+#     available_jobs = serializers.IntegerField(write_only=True, required=False)
+
+#     class Meta:
+#         model  = JobPosting
+#         fields = ['id', 'employer', 'org', 'role', 'vacancies', 'available_jobs', 'is_active', 'created_at']
+#         read_only_fields = ['id', 'created_at', 'employer']
+
+#     def validate(self, data):
+#         # Map available_jobs → vacancies if frontend sends available_jobs
+#         if 'available_jobs' in data and 'vacancies' not in data:
+#             data['vacancies'] = data.pop('available_jobs')
+#         elif 'available_jobs' in data:
+#             data.pop('available_jobs')
+#         return data
+
+#     def validate_vacancies(self, value):
+#         if value < 1:
+#             raise serializers.ValidationError("Must have at least 1 vacancy.")
+#         return value
+    
+class JobInputSerializer(serializers.Serializer):
+    org            = serializers.CharField(max_length=255)
+    role           = serializers.CharField(max_length=255)
+    location       = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    salary         = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    available_jobs = serializers.IntegerField(min_value=1, default=1)
+    description    = serializers.CharField(required=False, allow_blank=True)
+
+# class BulkJobPostSerializer(serializers.Serializer):
+#     employer_id = serializers.CharField(max_length=50)
+#     jobs        = JobPostingSerializer(many=True)
+
+
+#     def create(self, validated_data):
+#         eid = validated_data['employer_id']
+        
+#         try:
+#             employer = Employer.objects.get(employer_id=eid)
+#         except Employer.DoesNotExist:
+#             raise serializers.ValidationError(
+#                 {"employer_id": f"No employer found with ID '{eid}'."}
+#             )
+        
+#         objs = [
+#             JobPosting(
+#                 employer=employer,
+#                 org=job['org'],
+#                 role=job['role'],
+#                 vacancies=job.get('vacancies', job.get('available_jobs', 1)),  # handles both
+#             )
+#             for job in validated_data['jobs']
+#         ]
+#         return JobPosting.objects.bulk_create(objs)
+        
+
 class JobPostingSerializer(serializers.ModelSerializer):
     class Meta:
         model  = JobPosting
-        fields = [
-            'id', 'employer_id', 'org', 'role',
-            'location', 'salary', 'available_jobs',
-            'description', 'is_active', 'created_at',
-        ]
-        read_only_fields = ['id', 'created_at', 'employer_id']
+        fields = ['id', 'employer', 'org', 'role', 'vacancies', 'is_active', 'created_at']
+        read_only_fields = ['id', 'created_at', 'employer']
 
-    def validate_available_jobs(self, value):
-        if value < 1:
-            raise serializers.ValidationError("Must have at least 1 vacancy.")
-        return value
+
+class BulkJobPostSerializer(serializers.Serializer):
+    employer_id = serializers.CharField(max_length=50)
+    jobs        = JobInputSerializer(many=True)          # ← was JobPostingSerializer
+
+    def create(self, validated_data):
+        eid = validated_data['employer_id']
+        try:
+            employer = Employer.objects.get(employer_id=eid)
+        except Employer.DoesNotExist:
+            raise serializers.ValidationError(
+                {"employer_id": f"No employer found with ID '{eid}'."}
+            )
+
+        objs = [
+            JobPosting(
+                employer=employer,
+                org=job['org'],
+                role=job['role'],
+                vacancies=job.get('available_jobs', 1),
+            )
+            for job in validated_data['jobs']
+        ]
+        return JobPosting.objects.bulk_create(objs)
+    
 
 
 class JobBoardSerializer(serializers.Serializer):
     org  = serializers.CharField()
     role = serializers.CharField()
     n    = serializers.IntegerField()
-
-
-class BulkJobPostSerializer(serializers.Serializer):
-    employer_id = serializers.CharField(max_length=50)
-    jobs        = JobPostingSerializer(many=True)
-
-    def create(self, validated_data):
-        eid  = validated_data['employer_id']
-        objs = [
-            JobPosting(employer_id=eid, **j)
-            for j in validated_data['jobs']
-        ]
-        return JobPosting.objects.bulk_create(objs)

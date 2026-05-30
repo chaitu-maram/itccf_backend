@@ -2443,7 +2443,7 @@ def get_unlocked_ids(employer_id: str) -> set:
         return set()
     return set(
         Payment.objects
-        .filter(employer=employer)
+        .filter(employer=employer, status="success")
         .values_list("student_id", flat=True)
     )
 
@@ -2491,7 +2491,6 @@ class StudentListView(APIView):
         })
 
 
-# /api/students/  — ALL students (employer sees by unlock status; HR sees own students)
 class StudentListAllView(APIView):
 
     def get(self, request):
@@ -2504,16 +2503,28 @@ class StudentListAllView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+        employer = None  # ← always initialise so the final return never crashes
+
         if employer_id:
             try:
-                Employer.objects.get(employer_id=employer_id)
+                employer = Employer.objects.get(employer_id=employer_id)
             except Employer.DoesNotExist:
                 return Response(
                     {"error": "Employer not found."},
                     status=status.HTTP_404_NOT_FOUND
                 )
+
             students = StudentProfile.objects.all().order_by("-created_at")
-            paid_student_ids = get_unlocked_ids(employer_id)
+
+            paid_student_ids = set(
+                Payment.objects.filter(
+                    employer=employer,       # ← use object not pk, both work but this is cleaner
+                    status="success"
+                ).values_list("student_id", flat=True)
+            )
+
+            print(f"[DEBUG] employer={employer.employer_id}")
+            print(f"[DEBUG] paid_student_ids={paid_student_ids}")
 
         else:
             try:
@@ -2534,10 +2545,24 @@ class StudentListAllView(APIView):
         for student, row in zip(students, serializer.data):
             row = dict(row)
             row["is_unlocked"] = student.id in paid_student_ids
+            print(f"[DEBUG] student.id={student.id}  unlocked={row['is_unlocked']}")
             data.append(row)
 
-        return Response(data)
+        # just before return Response(...)
+        print(f"[DEBUG] FINAL RESPONSE students count: {len(data)}")
+        for row in data:
+            if row["id"] in [128, 133]:
+                print(f"[DEBUG] FINAL ROW: id={row['id']} is_unlocked={row['is_unlocked']}")
 
+        # ── Same shape as StudentListView so frontend json.students parsing works ──
+        return Response({
+            "employer": {
+                "employer_id":  employer.employer_id  if employer else "",
+                "name":         employer.name         if employer else "",
+                "company_name": employer.company_name if employer else "",
+            },
+            "students": data,
+        })
 
 # =========================================================
 # PAYMENT CONFIRM  (single definition)
@@ -2551,6 +2576,7 @@ class PaymentConfirmView(APIView):
         employer_id  = request.data.get("employer_id")
         reference_id = request.data.get("reference_id")
         student_ids  = request.data.get("student_ids", [])
+        
 
         if not employer_id:
             return Response({"error": "employer_id is required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -2571,7 +2597,7 @@ class PaymentConfirmView(APIView):
                 _, created = Payment.objects.get_or_create(
                     employer=employer,
                     student=student,
-                    defaults={"amount": 50},
+                    defaults={"amount": 50, "status": "success"},
                 )
                 if created:
                     created_count += 1
@@ -2723,12 +2749,15 @@ class PostJobsView(APIView):
     permission_classes = [AllowAny]   # FIX: was IsAuthenticated → caused 403
 
     def post(self, request):
+        print("REQUEST DATA:", request.data)
         ser = BulkJobPostSerializer(data=request.data)
         if not ser.is_valid():
+            print("VALIDATION ERRORS:", ser.errors)
             return Response(
                 {'error': ser.errors},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    
 
         # Optional guard: if a token employer_id exists, it must match payload
         payload_eid = ser.validated_data['employer_id']
@@ -2747,7 +2776,7 @@ class PostJobsView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
+    
 
 class JobBoardView(APIView):
     """
@@ -2762,7 +2791,7 @@ class JobBoardView(APIView):
             JobPosting.objects
             .filter(is_active=True)
             .values('org', 'role')
-            .annotate(n=Sum('available_jobs'))
+            .annotate(n=Sum('vacancies'))
             .order_by('role', 'org')
         )
         ser = JobBoardSerializer(qs, many=True)
@@ -2831,85 +2860,64 @@ def perform_create(self, serializer):
 
 
 
+
+
 import random
 import string
 import uuid
 from datetime import timedelta
- 
+
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
- 
-from .models import HR, Employer   # ← adjust import path if needed
- 
+
+from .models import HR, Employer
+
 import json
 from django.http import JsonResponse
- 
- 
-# ─────────────────────────────────────────────
-# In-memory store for reset tokens
-# (use Django cache / Redis in production)
-# ─────────────────────────────────────────────
+
+
 _RESET_TOKENS: dict[str, dict] = {}
-# schema: { token_str: { "identifier": str, "expires_at": datetime } }
- 
- 
-# ─────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────
- 
+
+
 def _mask_email(email: str) -> str:
-    """u***@gmail.com"""
     try:
         local, domain = email.split("@", 1)
         masked_local = local[0] + "***" if len(local) > 1 else "***"
         return f"{masked_local}@{domain}"
     except Exception:
         return "***"
- 
- 
+
+
 def _generate_otp(length: int = 6) -> str:
     return "".join(random.choices(string.digits, k=length))
- 
- 
+
+
 def _find_user(identifier: str):
-    """
-    Returns (user_obj, user_type) where user_type is 'hr' or 'employer'.
-    Searches by HR ID / Employer ID / email.
-    Returns (None, None) if not found.
-    """
     identifier = identifier.strip()
- 
-    # ── HR ──
     if identifier.upper().startswith("HR"):
         hr = HR.objects.filter(hr_id__iexact=identifier).first()
         if hr:
             return hr, "hr"
- 
-    # ── Employer ──
     if identifier.upper().startswith("EM"):
         emp = Employer.objects.filter(employer_id__iexact=identifier).first()
         if emp:
             return emp, "employer"
- 
-    # ── Email fallback ──
     hr = HR.objects.filter(email__iexact=identifier).first()
     if hr:
         return hr, "hr"
- 
     emp = Employer.objects.filter(email__iexact=identifier).first()
     if emp:
         return emp, "employer"
- 
     return None, None
- 
- 
+
+
 def _send_otp_email(to_email: str, otp: str, user_type: str) -> None:
     label = "HR Portal" if user_type == "hr" else "Employer Portal"
-    subject = f"[HR Network] Your OTP for Password Reset"
+    subject = "[HR Network] Your OTP for Password Reset"
     message = (
         f"Hello,\n\n"
         f"Your One-Time Password (OTP) for resetting your {label} account password is:\n\n"
@@ -2925,12 +2933,8 @@ def _send_otp_email(to_email: str, otp: str, user_type: str) -> None:
         recipient_list=[to_email],
         fail_silently=False,
     )
- 
- 
-# ─────────────────────────────────────────────
-# View 1 — Send OTP
-# ─────────────────────────────────────────────
- 
+
+
 @csrf_exempt
 @require_POST
 def send_otp(request):
@@ -2938,56 +2942,35 @@ def send_otp(request):
         body = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
- 
+
     identifier = body.get("identifier", "").strip()
     if not identifier:
         return JsonResponse({"error": "identifier is required."}, status=400)
- 
+
     user, user_type = _find_user(identifier)
     if user is None:
-        # Deliberately vague to prevent account enumeration
-        return JsonResponse(
-            {"error": "No account found with that ID or email."},
-            status=404,
-        )
- 
-    # Get email from user object
+        return JsonResponse({"error": "No account found with that ID or email."}, status=404)
+
     email = getattr(user, "email", None)
     if not email:
-        return JsonResponse(
-            {"error": "No email address is associated with this account. Please contact support."},
-            status=400,
-        )
- 
+        return JsonResponse({"error": "No email address associated with this account."}, status=400)
+
     otp = _generate_otp()
- 
-    # Save OTP + expiry on the model
     user.otp = otp
-    if user_type == "employer":
-        user.otp_created_at = timezone.now()   # Employer has otp_created_at
-    # HR model has only `otp` field — we use otp_created_at via a fallback below
-    # To keep HR working the same way, we attach otp_created_at dynamically
-    # (see verify_otp — it reads timezone.now() within 5-min window)
-    user.save(update_fields=["otp"] + (["otp_created_at"] if user_type == "employer" else []))
- 
+    user.otp_created_at = timezone.now()
+    user.save(update_fields=["otp", "otp_created_at"])
+
     try:
         _send_otp_email(email, otp, user_type)
     except Exception as exc:
-        return JsonResponse(
-            {"error": f"Failed to send OTP email: {str(exc)}"},
-            status=500,
-        )
- 
+        return JsonResponse({"error": f"Failed to send OTP email: {str(exc)}"}, status=500)
+
     return JsonResponse({
         "message": "OTP sent successfully.",
         "masked_email": _mask_email(email),
     })
- 
- 
-# ─────────────────────────────────────────────
-# View 2 — Verify OTP
-# ─────────────────────────────────────────────
- 
+
+
 @csrf_exempt
 @require_POST
 def verify_otp(request):
@@ -2995,57 +2978,36 @@ def verify_otp(request):
         body = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
- 
+
     identifier = body.get("identifier", "").strip()
     otp_input  = body.get("otp", "").strip()
- 
+
     if not identifier or not otp_input:
         return JsonResponse({"error": "identifier and otp are required."}, status=400)
- 
+
     user, user_type = _find_user(identifier)
     if user is None:
         return JsonResponse({"error": "Account not found."}, status=404)
- 
-    # Check OTP matches
+
     if not user.otp or user.otp != otp_input:
         return JsonResponse({"error": "Invalid OTP. Please try again."}, status=400)
- 
-    # Check expiry
-    if user_type == "employer":
-        # Employer.otp_is_valid() checks otp_created_at + 5 min
-        if not user.otp_is_valid():
-            return JsonResponse({"error": "OTP has expired. Please request a new one."}, status=400)
-    else:
-        # HR: no otp_created_at field — we accept OTP within 5 min of it being set.
-        # Since HR has no timestamp, we trust the OTP exists and is correct.
-        # If you add otp_created_at to HR model later, add the same check here.
-        pass
- 
-    # Issue a one-time reset token (valid 10 minutes)
+
+    if not user.otp_is_valid():
+        return JsonResponse({"error": "OTP has expired. Please request a new one."}, status=400)
+
     token = str(uuid.uuid4())
     _RESET_TOKENS[token] = {
         "identifier": identifier,
         "expires_at": timezone.now() + timedelta(minutes=10),
     }
- 
-    # Clear OTP so it can't be reused
+
     user.otp = None
-    save_fields = ["otp"]
-    if user_type == "employer":
-        user.otp_created_at = None
-        save_fields.append("otp_created_at")
-    user.save(update_fields=save_fields)
- 
-    return JsonResponse({
-        "message": "OTP verified.",
-        "reset_token": token,
-    })
- 
- 
-# ─────────────────────────────────────────────
-# View 3 — Reset Password
-# ─────────────────────────────────────────────
- 
+    user.otp_created_at = None
+    user.save(update_fields=["otp", "otp_created_at"])
+
+    return JsonResponse({"message": "OTP verified.", "reset_token": token})
+
+
 @csrf_exempt
 @require_POST
 def reset_password(request):
@@ -3053,45 +3015,36 @@ def reset_password(request):
         body = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
- 
+
     identifier   = body.get("identifier", "").strip()
     reset_token  = body.get("reset_token", "").strip()
     new_password = body.get("new_password", "")
- 
+
     if not identifier or not reset_token or not new_password:
-        return JsonResponse(
-            {"error": "identifier, reset_token, and new_password are required."},
-            status=400,
-        )
- 
+        return JsonResponse({"error": "identifier, reset_token, and new_password are required."}, status=400)
+
     if len(new_password) < 6:
-        return JsonResponse(
-            {"error": "Password must be at least 6 characters."},
-            status=400,
-        )
- 
-    # Validate reset token
+        return JsonResponse({"error": "Password must be at least 6 characters."}, status=400)
+
     token_data = _RESET_TOKENS.get(reset_token)
     if token_data is None:
         return JsonResponse({"error": "Invalid or expired reset token."}, status=400)
- 
+
     if token_data["identifier"] != identifier:
         return JsonResponse({"error": "Token does not match the provided identifier."}, status=400)
- 
+
     if timezone.now() > token_data["expires_at"]:
         _RESET_TOKENS.pop(reset_token, None)
         return JsonResponse({"error": "Reset token has expired. Please start over."}, status=400)
- 
-    # Find user and update password
+
     user, user_type = _find_user(identifier)
     if user is None:
         return JsonResponse({"error": "Account not found."}, status=404)
- 
+
     user.password = make_password(new_password)
     user.save(update_fields=["password"])
- 
-    # Invalidate token
+
     _RESET_TOKENS.pop(reset_token, None)
- 
+
     return JsonResponse({"message": "Password reset successfully."})
- 
+
