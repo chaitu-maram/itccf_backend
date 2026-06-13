@@ -1825,8 +1825,10 @@ class StudentProfileViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def generate_questions(self, request, pk=None):
         student = self.get_object()
+        force_refresh = request.query_params.get("refresh", "false").lower() == "true"
+
         InterviewQuestion.objects.filter(student=student).delete()
-        questions = generate_ai_questions(student)
+        questions = generate_ai_questions(student, force_refresh=force_refresh)
         for q in questions:
             InterviewQuestion.objects.create(student=student, question=q)
         return Response({

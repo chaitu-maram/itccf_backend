@@ -1,4 +1,4 @@
-from django.db import models
+﻿from django.db import models
 
 # Create your models here.
 from django.db import models
@@ -472,3 +472,41 @@ class JobPosting(models.Model):
 
     def __str__(self):
         return f"{self.role} at {self.org}"
+    
+
+
+class QuestionBank(models.Model):
+    SECTION_CHOICES = [
+        ("Personal", "Personal"),
+        ("Technical", "Technical"),
+        ("Professional", "Professional"),
+    ]
+
+    # Core matching fields
+    tech_stack     = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    designation    = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    specialization = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+
+    # NEW: job interest context (used in prompt + matching)
+    job_interest   = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    experience_level = models.CharField(
+        max_length=20, blank=True, null=True,
+        choices=[("fresher", "Fresher"), ("junior", "Junior"), ("mid", "Mid"), ("senior", "Senior")],
+        db_index=True
+    )
+
+    section  = models.CharField(max_length=20, choices=SECTION_CHOICES, db_index=True)
+    question = models.TextField()
+
+    times_used = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["tech_stack", "designation", "section"]),
+            models.Index(fields=["job_interest", "section"]),
+            models.Index(fields=["experience_level", "section"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.section}] {self.question[:60]}"

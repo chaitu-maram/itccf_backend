@@ -1,553 +1,379 @@
-# import requests
-
-# def generate_ai_questions(student):
-#     prompt = f"""
-# Generate exactly 4 multiple choice interview questions.
-
-# Candidate Profile:
-# - Academic: {student.academic}
-# - Specialization: {student.specialization}
-# - Designation: {student.designation}
-# - Tech Stack: {student.tech_stack}
-# - Core Specialization: {student.core_spec_v1} {student.core_spec_v2}
-# - Technical Skills: {student.technical_v1} {student.technical_v2}
-# - Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
-
-# Rules:
-# - Only questions
-# - One question per line
-# - No explanations
-# - No numbering (just plain questions)
-# """
-
-#     try:
-#         print("🚀 Calling Ollama...")
-
-#         response = requests.post(
-#             "http://localhost:11434/api/generate",
-#             json={
-#                 "model": "phi3",   # 🔥 faster than llama3
-#                 "prompt": prompt,
-#                 "stream": False,
-#                 "options": {
-#                     "num_predict": 200
-#                 }
-#             },
-#             timeout=120
-#         )
-
-#         print("✅ Response received")
-
-#         data = response.json()
-#         text = data.get("response", "")
-
-#         print("RAW RESPONSE:\n", text)
-
-#         questions = []
-
-#         for line in text.split("\n"):
-#             line = line.strip()
-
-#             if line:
-#                 cleaned = line.lstrip("0123456789.)- ").strip()
-
-#                 if cleaned:
-#                     questions.append(cleaned)
-
-#         # fallback if AI fails
-#         if not questions:
-#             return fallback_questions(student)
-
-#         return questions[:4]
-
-#     except Exception as e:
-#         print("❌ ERROR:", e)
-#         return fallback_questions(student)
-
-
-# def fallback_questions(student):
-#     questions = []
-
-#     if student.tech_stack:
-#         questions.append(f"Explain your experience with {student.tech_stack}")
-
-#     if student.specialization:
-#         questions.append(f"What are key concepts in {student.specialization}?")
-
-#     if student.designation:
-#         questions.append(f"What is your role as {student.designation}?")
-
-#     while len(questions) < 4:
-#         questions.append("Tell me about a challenge you solved.")
-
-#     return questions
-
-
-
-# import requests
-
-
-# def generate_ai_questions(student):
-#     prompt = f"""
-# Generate exactly 3 multiple choice interview questions.
-
-# Candidate Profile:
-# - Academic: {student.academic}
-# - Specialization: {student.specialization}
-# - Designation: {student.designation}
-# - Tech Stack: {student.tech_stack}
-# - Core Specialization: {student.core_spec_v1} {student.core_spec_v2}
-# - Technical Skills: {student.technical_v1} {student.technical_v2}
-# - Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
-
-# Rules:
-# - Each question must have 4 options (A, B, C, D)
-# - Only ONE correct answer
-# - Clearly mention the correct answer
-# - Format STRICTLY like this:
-
-# Question: <question text>
-# A. option
-# B. option
-# C. option
-# D. option
-# Answer: <correct option letter>
-
-# - Separate each question with a blank line
-# - Do NOT add explanations
-# """
-
-#     try:
-#         print("🚀 Calling Ollama...")
-
-#         response = requests.post(
-#             "http://localhost:11434/api/generate",
-#             json={
-#                 "model": "phi3",   # fast model
-#                 "prompt": prompt,
-#                 "stream": False,
-#                 "options": {
-#                     "num_predict": 300
-#                 }
-#             },
-#             timeout=120
-#         )
-
-#         print("✅ Response received")
-
-#         data = response.json()
-#         text = data.get("response", "")
-
-#         print("RAW RESPONSE:\n", text)
-
-#         # ✅ split into full MCQ blocks
-#         blocks = text.split("\n\n")
-
-#         questions = []
-#         for block in blocks:
-#             block = block.strip()
-#             if block:
-#                 questions.append(block)
-
-#         # fallback if AI fails
-#         if not questions:
-#             return fallback_questions(student)
-
-#         return questions[:3]
-
-#     except Exception as e:
-#         print("❌ ERROR:", e)
-#         return fallback_questions(student)
-
-
-# # ✅ fallback in MCQ format
-# def fallback_questions(student):
-#     return [
-#         """Question: What is a REST API?
-# A. A database
-# B. A web service architecture
-# C. A programming language
-# D. A browser
-# Answer: B""",
-
-#         """Question: What does Django ORM do?
-# A. Manages databases
-# B. Handles CSS
-# C. Creates UI
-# D. Runs JavaScript
-# Answer: A""",
-
-#         """Question: What is React used for?
-# A. Backend
-# B. Database
-# C. Frontend UI
-# D. Networking
-# Answer: C""",
-
-#         """Question: What is Git?
-# A. Operating system
-# B. Version control system
-# C. Database
-# D. IDE
-# Answer: B"""
-#     ]
-
-
-
-# import re
-# import requests
-
-
-# def generate_ai_questions(student):
-
-#     prompt = f"""
-# Generate EXACTLY 5 low level interview multiple choice questions.
-
-# Candidate Profile:
-# - Academic: {student.academic}
-# - Specialization: {student.specialization}
-# - Designation: {student.designation}
-# - Tech Stack: {student.tech_stack}
-# - Core Specialization: {student.core_spec_v1} {student.core_spec_v2}
-# - Technical Skills: {student.technical_v1} {student.technical_v2}
-# - Non Technical Skills: {student.non_tech_v1} {student.non_tech_v2}
-
-# STRICT RULES:
-# 1. Generate EXACTLY 5 questions
-# 2. Each question must contain:
-#    - Question
-#    - A option
-#    - B option
-#    - C option
-#    - D option
-#    - Correct Answer
-# 3. No explanations
-# 4. No markdown
-# 5. No extra text
-
-# STRICT FORMAT:
-
-# Question: <question>
-# A. <option>
-# B. <option>
-# C. <option>
-# D. <option>
-# Answer: <letter>
-
-# Question: <question>
-# A. <option>
-# B. <option>
-# C. <option>
-# D. <option>
-# Answer: <letter>
-
-# Question: <question>
-# A. <option>
-# B. <option>
-# C. <option>
-# D. <option>
-# Answer: <letter>
-# """
-
-#     try:
-
-#         print("🚀 Calling Ollama...")
-
-#         response = requests.post(
-#             "http://localhost:11434/api/generate",
-#             json={
-#                 "model": "phi3",
-#                 "prompt": prompt,
-#                 "stream": False,
-#                 "options": {
-#                     "temperature": 0.3,
-#                     "num_predict": 800
-#                 }
-#             },
-#             timeout=300
-#         )
-
-#         print("✅ Response received")
-
-#         data = response.json()
-
-#         text = data.get("response", "")
-
-#         print("RAW RESPONSE:\n", text)
-
-#         # regex extraction
-#         pattern = r"(Question:.*?Answer:\s*[A-D])"
-
-#         matches = re.findall(
-#             pattern,
-#             text,
-#             re.DOTALL
-#         )
-
-#         questions = [
-#             q.strip()
-#             for q in matches
-#         ]
-
-#         print("PARSED QUESTIONS:", len(questions))
-
-#         # fallback if insufficient questions
-#         if len(questions) < 5:
-#             print("⚠️ Using fallback questions")
-#             return fallback_questions(student)
-
-#         return questions[:5]
-
-#     except Exception as e:
-
-#         print("❌ ERROR:", e)
-
-#         return fallback_questions(student)
-
-
-# def fallback_questions(student):
-
-#     return [
-
-#         """Question: What is a REST API?
-# A. A database
-# B. A web service architecture
-# C. A programming language
-# D. A browser
-# Answer: B""",
-
-#         """Question: What does Django ORM do?
-# A. Manages databases
-# B. Handles CSS
-# C. Creates UI
-# D. Runs JavaScript
-# Answer: A""",
-
-#         """Question: What is React used for?
-# A. Backend
-# B. Database
-# C. Frontend UI
-# D. Networking
-# Answer: C"""
-#     ]
-
-
-# import re
-# import requests
-
-
-# def fallback_questions(student):
-#     tech  = student.tech_stack     or "software development"
-#     desig = student.designation    or "professional"
-#     spec  = student.specialization or "your field"
-
-#     personal = [
-#         ("What motivates you to work hard every day?",
-#          "Money only", "Growth and learning", "Avoiding work", "Peer pressure", "B"),
-#         ("How do you handle pressure at work?",
-#          "Panic and stop working", "Stay calm and prioritize tasks", "Blame others", "Ignore it", "B"),
-#         ("How do you respond to constructive criticism?",
-#          "Argue back", "Ignore it", "Accept and improve", "Get upset", "C"),
-#         (f"Why did you choose {spec} as your field?",
-#          "No other option", "Passion and career growth", "Family pressure only", "Random choice", "B"),
-#     ]
-
-#     technical = [
-#         (f"What is the main purpose of {tech}?",
-#          "To design logos", "To build and manage applications", "To handle HR tasks", "To write emails", "B"),
-#         (f"Which practice is most important when working with {tech}?",
-#          "Writing messy code", "Following coding standards and documentation", "Skipping testing", "Avoiding version control", "B"),
-#         ("What does debugging mean in software development?",
-#          "Writing new code", "Finding and fixing errors in code", "Deploying to production", "Designing the UI", "B"),
-#         (f"What is a key skill needed for a {desig} role?",
-#          "Avoiding communication", "Problem solving and technical knowledge", "Working without deadlines", "Ignoring requirements", "B"),
-#     ]
-
-#     professional = [
-#         (f"How do you prioritize tasks as a {desig}?",
-#          "Work randomly", "Assess urgency and importance then plan", "Do easiest tasks first", "Ignore all tasks", "B"),
-#         ("What do you do when you miss a deadline?",
-#          "Hide it from the team", "Inform the team early and recover the plan", "Blame a colleague", "Pretend it did not happen", "B"),
-#         ("How do you handle a disagreement with a colleague?",
-#          "Stop talking to them", "Discuss calmly and find a solution", "Escalate immediately", "Complain to everyone", "B"),
-#         ("What does professional responsibility mean to you?",
-#          "Doing only minimum work", "Owning your work and its outcomes", "Avoiding extra tasks", "Taking long breaks", "B"),
-#     ]
-
-#     result = []
-#     for q, a, b, c, d, ans in personal:
-#         result.append(f"Section: Personal\nQuestion: {q}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\nAnswer: {ans}")
-#     for q, a, b, c, d, ans in technical:
-#         result.append(f"Section: Technical\nQuestion: {q}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\nAnswer: {ans}")
-#     for q, a, b, c, d, ans in professional:
-#         result.append(f"Section: Professional\nQuestion: {q}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\nAnswer: {ans}")
-#     return result
-
-
-# def generate_ai_questions(student):
-
-#     full_name        = f"{student.surname or ''} {student.name or ''}".strip() or "Candidate"
-#     experience       = f"{student.experience_years or '0'} years {student.experience_months or '0'} months"
-#     core_specs       = " / ".join(filter(None, [student.core_spec_v1, student.core_spec_v2]))
-#     technical_skills = " / ".join(filter(None, [student.technical_v1, student.technical_v2]))
-#     non_tech_skills  = " / ".join(filter(None, [student.non_tech_v1, student.non_tech_v2]))
-#     general_cat      = " / ".join(filter(None, [student.general_cat_v1, student.general_cat_v2]))
-#     job_nature       = " / ".join(filter(None, [student.job_nature_v1, student.job_nature_v2]))
-
-#     prompt = f"""You are an HR interview assistant. Generate exactly 6 multiple choice questions for the following candidate.
-
-# === CANDIDATE PROFILE ===
-# Name              : {full_name}
-# Academic          : {student.academic or 'Not specified'}
-# Specialization    : {student.specialization or 'Not specified'}
-# Experience        : {experience}
-# Designation       : {student.designation or 'Not specified'}
-# Tech Stack        : {student.tech_stack or 'Not specified'}
-# Technical Skills  : {technical_skills or 'Not specified'}
-# Core Specialization : {core_specs or 'Not specified'}
-# Job Nature          : {job_nature or 'Not specified'}
-# =========================
-
-# SECTION RULES:
-# - Section Personal  (2 Qs): Basic attitude and motivation questions for this candidate.
-# - Section Technical (2 Qs): Basic questions about {student.tech_stack or 'general IT'} and {technical_skills or 'technical skills'}.
-# - Section Professional (2 Qs): Basic workplace and responsibility questions for a {student.designation or 'professional'}.
-
-# OUTPUT FORMAT — repeat exactly 6 times:
-
-# Section: Personal
-# Question: [question]
-# A. [option]
-# B. [option]
-# C. [option]
-# D. [option]
-# Answer: [A or B or C or D]
-
-# STRICT RULES:
-# 1. Output ONLY the 6 question blocks — nothing else
-# 2. No numbering, no markdown, no headers, no explanations
-# 3. Answer must be a single letter: A, B, C, or D"""
-
-#     try:
-#         print("🚀 Calling Ollama...")
-
-#         response = requests.post(
-#             "http://localhost:11434/api/generate",
-#             json={
-#                 "model": "phi3",
-#                 "prompt": prompt,
-#                 "stream": False,
-#                 "options": {
-#                     "temperature": 0.4,
-#                     "num_predict": 1800,
-#                     "stop": []
-#                 }
-#             },
-#             timeout=300
-#         )
-
-#         print("✅ Response received")
-
-#         data = response.json()
-#         text = data.get("response", "")
-
-#         print("RAW RESPONSE:\n", text)
-
-#         pattern   = r"(Section:\s*(?:Personal|Technical|Professional).*?Answer:\s*[A-Da-d])"
-#         matches   = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
-#         questions = [q.strip() for q in matches]
-
-#         print(f"PARSED QUESTIONS: {len(questions)}")
-
-#         personal     = [q for q in questions if re.search(r"Section:\s*Personal",     q, re.IGNORECASE)]
-#         technical    = [q for q in questions if re.search(r"Section:\s*Technical",    q, re.IGNORECASE)]
-#         professional = [q for q in questions if re.search(r"Section:\s*Professional", q, re.IGNORECASE)]
-
-#         print(f"  Personal: {len(personal)}, Technical: {len(technical)}, Professional: {len(professional)}")
-
-#         fb    = fallback_questions(student)
-#         final = (personal + fb[0:2])[:2] + (technical + fb[2:4])[:2] + (professional + fb[4:6])[:2]
-
-#         print(f"FINAL QUESTIONS: {len(final)}")
-#         return final
-
-#     except Exception as e:
-#         print(f"❌ ERROR: {e}")
-#         return fallback_questions(student)
-
-
 
 import re
 import requests
 
+from .models import QuestionBank
 
-def fallback_questions(student):
-    tech  = student.tech_stack     or "software development"
-    desig = student.designation    or "professional"
-    spec  = student.specialization or "your field"
+
+# ─────────────────────────────────────────────────────────────
+# Constants
+# ─────────────────────────────────────────────────────────────
+
+NEEDED_PER_SECTION = 4
+REUSE_LIMIT        = 15
+
+# Only these sections allow loose (cross-stack) fallback from the bank
+ALLOW_LOOSE_FALLBACK_SECTIONS = {"Personal", "Professional"}
+
+
+# ─────────────────────────────────────────────────────────────
+# Context helpers
+# ─────────────────────────────────────────────────────────────
+
+def _norm(value):
+    return (value or "").strip().lower()
+
+
+def _experience_level(student):
+    raw = _norm(student.experience_years)
+    if not raw or raw == "fresher":
+        return "fresher"
+    try:
+        years = int(raw.replace("+", ""))
+    except ValueError:
+        return "fresher"
+    if years <= 2:
+        return "junior"
+    if years <= 5:
+        return "mid"
+    return "senior"
+
+
+def _job_interests(student):
+    raw = []
+    for attr in [
+        "core_spec_v1",   "core_spec_v2",
+        "technical_v1",   "technical_v2",
+        "non_tech_v1",    "non_tech_v2",
+        "general_cat_v1", "general_cat_v2",
+        "job_nature_v1",  "job_nature_v2",
+    ]:
+        val = _norm(getattr(student, attr, "") or "")
+        if val:
+            raw.append(val)
+    return list(dict.fromkeys(raw))
+
+
+def _build_student_context(student):
+    return {
+        "tech_stack":       (student.tech_stack     or "general IT").strip(),
+        "designation":      (student.designation    or "Professional").strip(),
+        "specialization":   (student.specialization or "general").strip(),
+        "experience_level": _experience_level(student),
+        "experience_years": (student.experience_years or "Fresher").strip(),
+        "job_interests":    _job_interests(student),
+        "company_name":     (student.company_name   or "").strip(),
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# QuestionBank — fetch
+# ─────────────────────────────────────────────────────────────
+
+def _get_from_bank(section, ctx):
+    """
+    Fetch up to NEEDED_PER_SECTION questions for a section.
+
+    Tier 0  exact: tech + designation + specialization   (all sections)
+    Tier 1  same tech_stack only                         (all sections)
+    Tier 2  job_interest match                           (all sections)
+    Tier 3  designation match                            (Personal/Professional ONLY)
+    Tier 4  experience_level match                       (Personal/Professional ONLY)
+
+    Technical section HARD STOPS after Tier 1.
+    If < NEEDED questions found for Technical via Tier 0+1, we return
+    whatever we found — the caller will fill the gap from Ollama/fallback.
+    This guarantees a Java student NEVER gets ECE/Python questions.
+    """
+
+    base = (
+        QuestionBank.objects
+        .filter(section=section)
+        .filter(times_used__lt=REUSE_LIMIT)
+    )
+
+    collected = []
+    used_ids  = set()
+
+    def _pull(qs, needed):
+        """Pull `needed` rows, excluding already-collected ids."""
+        rows = list(
+            qs.exclude(id__in=used_ids)
+            .order_by("times_used", "?")[:needed]
+        )
+        collected.extend(rows)
+        used_ids.update(r.id for r in rows)
+
+    def remaining():
+        return NEEDED_PER_SECTION - len(collected)
+
+    # ── Tier 0: exact match ───────────────────────────────────
+    _pull(
+        base.filter(
+            tech_stack__iexact=ctx["tech_stack"],
+            designation__iexact=ctx["designation"],
+            specialization__iexact=ctx["specialization"],
+        ),
+        remaining()
+    )
+    if remaining() <= 0:
+        return collected
+
+    # ── Tier 1: same tech_stack ───────────────────────────────
+    _pull(
+        base.filter(tech_stack__iexact=ctx["tech_stack"]),
+        remaining()
+    )
+    if remaining() <= 0:
+        return collected
+
+    # ── HARD STOP for Technical section ──────────────────────
+    # Never serve cross-stack questions for Technical.
+    # Return what we have (may be < NEEDED — caller handles the gap).
+    if section == "Technical":
+        print(
+            f"  🔒 Technical hard-stop: found {len(collected)}/{NEEDED_PER_SECTION} "
+            f"for tech_stack='{ctx['tech_stack']}'"
+        )
+        return collected
+
+    # ── Tier 2: job_interest match (Personal / Professional) ──
+    for interest in ctx["job_interests"]:
+        if remaining() <= 0:
+            break
+        _pull(
+            base.filter(job_interest__iexact=interest),
+            remaining()
+        )
+    if remaining() <= 0:
+        return collected
+
+    # ── Tier 3: designation match ─────────────────────────────
+    _pull(
+        base.filter(designation__iexact=ctx["designation"]),
+        remaining()
+    )
+    if remaining() <= 0:
+        return collected
+
+    # ── Tier 4: experience_level match ───────────────────────
+    _pull(
+        base.filter(experience_level=ctx["experience_level"]),
+        remaining()
+    )
+
+    return collected
+
+
+# ─────────────────────────────────────────────────────────────
+# QuestionBank — save
+# ─────────────────────────────────────────────────────────────
+
+def _save_to_bank(parsed_questions, ctx):
+    primary_interest = ctx["job_interests"][0] if ctx["job_interests"] else None
+
+    objs = [
+        QuestionBank(
+            tech_stack=ctx["tech_stack"],
+            designation=ctx["designation"],
+            specialization=ctx["specialization"],
+            job_interest=primary_interest,
+            experience_level=ctx["experience_level"],
+            section=section,
+            question=q_text,
+        )
+        for section, q_text in parsed_questions
+    ]
+    if objs:
+        QuestionBank.objects.bulk_create(objs)
+        print(f"💾 Saved {len(objs)} questions to bank")
+
+
+# ─────────────────────────────────────────────────────────────
+# Static fallback — always correct, fully personalised
+# ─────────────────────────────────────────────────────────────
+
+def _fallback_questions(ctx):
+    """
+    Returns exactly 12 personalised static questions (4 per section).
+    Never fails. Used when bank + Ollama don't cover all 12.
+    """
+    tech      = ctx["tech_stack"]
+    desig     = ctx["designation"]
+    spec      = ctx["specialization"]
+    exp       = ctx["experience_years"]
+    interests = ctx["job_interests"]
+
+    primary_interest = interests[0] if interests else desig
+    exp_context = (
+        f"with {exp} years of experience"
+        if exp and _norm(exp) != "fresher"
+        else "as a fresher"
+    )
 
     personal = [
-        ("What motivates you to work hard every day?",
-         "Money only", "Growth and learning", "Avoiding work", "Peer pressure", "B"),
-        ("How do you handle pressure at work?",
-         "Panic and stop working", "Stay calm and prioritize tasks", "Blame others", "Ignore it", "B"),
-        ("How do you respond to constructive criticism?",
-         "Argue back", "Ignore it", "Accept and improve", "Get upset", "C"),
-        (f"Why did you choose {spec} as your field?",
-         "No other option", "Passion and career growth", "Family pressure only", "Random choice", "B"),
+        (
+            f"What motivates you to pursue a career in {primary_interest}?",
+            "Salary only",
+            "Passion and career growth",
+            "Family pressure",
+            "Random choice",
+            "B",
+        ),
+        (
+            "How do you handle pressure or tight deadlines at work?",
+            "Panic and stop working",
+            "Stay calm, prioritize, and communicate",
+            "Blame colleagues",
+            "Ignore the deadline",
+            "B",
+        ),
+        (
+            "How do you respond to constructive criticism from a manager?",
+            "Argue back",
+            "Ignore it completely",
+            "Accept it and use it to improve",
+            "Get upset and quit",
+            "C",
+        ),
+        (
+            f"Why did you choose {spec} as your area of specialization?",
+            "No other option was available",
+            "Genuine interest and career potential",
+            "Only family pressure",
+            "Random choice with no reason",
+            "B",
+        ),
     ]
 
     technical = [
-        (f"What is the main purpose of {tech}?",
-         "To design logos", "To build and manage applications", "To handle HR tasks", "To write emails", "B"),
-        (f"Which practice is most important when working with {tech}?",
-         "Writing messy code", "Following coding standards and documentation", "Skipping testing", "Avoiding version control", "B"),
-        ("What does debugging mean in software development?",
-         "Writing new code", "Finding and fixing errors in code", "Deploying to production", "Designing the UI", "B"),
-        (f"What is a key skill needed for a {desig} role?",
-         "Avoiding communication", "Problem solving and technical knowledge", "Working without deadlines", "Ignoring requirements", "B"),
+        (
+            f"What is the primary purpose of {tech} in modern development?",
+            "To design marketing logos",
+            "To build, manage, and scale applications",
+            "To handle HR and payroll tasks",
+            "To write formal emails",
+            "B",
+        ),
+        (
+            f"Which practice is most important when working with {tech}?",
+            "Writing messy, undocumented code",
+            "Following coding standards and maintaining documentation",
+            "Skipping unit testing to save time",
+            "Avoiding version control entirely",
+            "B",
+        ),
+        (
+            f"What is a key technical skill required for a {desig} role using {tech}?",
+            "Avoiding all communication",
+            "Problem solving combined with strong technical knowledge",
+            "Working without any defined deadlines",
+            "Ignoring project requirements",
+            "B",
+        ),
+        (
+            f"How should a {desig} approach debugging a critical issue in {tech}?",
+            "Restart the system and hope it resolves",
+            "Isolate the issue, reproduce it, then fix and verify",
+            "Delete the problematic code immediately",
+            "Assign blame to another team member",
+            "B",
+        ),
     ]
 
     professional = [
-        (f"How do you prioritize tasks as a {desig}?",
-         "Work randomly", "Assess urgency and importance then plan", "Do easiest tasks first", "Ignore all tasks", "B"),
-        ("What do you do when you miss a deadline?",
-         "Hide it from the team", "Inform the team early and recover the plan", "Blame a colleague", "Pretend it did not happen", "B"),
-        ("How do you handle a disagreement with a colleague?",
-         "Stop talking to them", "Discuss calmly and find a solution", "Escalate immediately", "Complain to everyone", "B"),
-        ("What does professional responsibility mean to you?",
-         "Doing only minimum work", "Owning your work and its outcomes", "Avoiding extra tasks", "Taking long breaks", "B"),
+        (
+            f"How do you prioritize multiple tasks as a {desig} {exp_context}?",
+            "Work on tasks in random order",
+            "Assess urgency and impact, then plan and execute",
+            "Only do the easiest tasks first",
+            "Ignore all tasks until forced",
+            "B",
+        ),
+        (
+            "What is the right approach when you realize you will miss a deadline?",
+            "Hide it from the team until the last moment",
+            "Inform stakeholders early and propose a revised plan",
+            "Blame a colleague for the delay",
+            "Pretend the deadline never existed",
+            "B",
+        ),
+        (
+            "How do you professionally handle a disagreement with a teammate?",
+            "Stop communicating with them entirely",
+            "Discuss the issue calmly and work toward a solution",
+            "Escalate immediately without attempting resolution",
+            "Complain to everyone else in the office",
+            "B",
+        ),
+        (
+            f"What does professional accountability mean for a {desig} {exp_context}?",
+            "Doing the bare minimum to get by",
+            "Owning your work, decisions, and their outcomes",
+            "Avoiding any additional responsibility",
+            "Taking long breaks and missing meetings",
+            "B",
+        ),
     ]
 
-    result = []
-    for q, a, b, c, d, ans in personal:
-        result.append(f"Section: Personal\nQuestion: {q}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\nAnswer: {ans}")
-    for q, a, b, c, d, ans in technical:
-        result.append(f"Section: Technical\nQuestion: {q}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\nAnswer: {ans}")
-    for q, a, b, c, d, ans in professional:
-        result.append(f"Section: Professional\nQuestion: {q}\nA. {a}\nB. {b}\nC. {c}\nD. {d}\nAnswer: {ans}")
-    return result
+    def fmt(items, section):
+        return [
+            (
+                f"Section: {section}\n"
+                f"Question: {q}\n"
+                f"A. {a}\nB. {b}\nC. {c}\nD. {d}\n"
+                f"Answer: {ans}"
+            )
+            for q, a, b, c, d, ans in items
+        ]
+
+    return (
+        fmt(personal,      "Personal")      # [0:4]
+        + fmt(technical,   "Technical")     # [4:8]
+        + fmt(professional,"Professional")  # [8:12]
+    )
 
 
-def generate_ai_questions(student):
+# ─────────────────────────────────────────────────────────────
+# Ollama call
+# ─────────────────────────────────────────────────────────────
 
-    # ── Build only the fields actually used in the prompt ──────────────────
-    desig = (student.designation    or "Professional").strip()
-    tech  = (student.tech_stack     or "general IT").strip()
-    spec  = (student.specialization or "general").strip()
+def _call_ollama(ctx):
+    tech      = ctx["tech_stack"]
+    desig     = ctx["designation"]
+    spec      = ctx["specialization"]
+    exp       = ctx["experience_years"]
+    exp_level = ctx["experience_level"]
+    interests = ctx["job_interests"]
 
-    # Compact prompt — fewer tokens = faster generation on small models like phi3
+    interest_line = (
+        f"  Job interests    : {', '.join(interests[:4])}\n"
+        if interests else ""
+    )
+    exp_line = (
+        f"  Experience       : {exp} years ({exp_level} level)\n"
+        if exp and _norm(exp) != "fresher"
+        else "  Experience       : Fresher\n"
+    )
+
     prompt = (
-        "Generate exactly 6 MCQ interview questions. "
-        "Output ONLY the 6 blocks below, nothing else, no numbering, no markdown.\n\n"
-        f"Candidate: {desig}, {tech}, {spec}\n\n"
-        "Rules:\n"
-        "- 2 questions: Section Personal  (attitude/motivation)\n"
-        f"- 2 questions: Section Technical (about {tech})\n"
-        f"- 2 questions: Section Professional (workplace, {desig} role)\n\n"
-        "Format (repeat exactly 6 times):\n"
+        "Generate exactly 12 MCQ interview questions.\n"
+        "Output ONLY the 12 blocks — no numbering, no markdown, no extra text.\n\n"
+        "Candidate profile:\n"
+        f"  Role/Designation : {desig}\n"
+        f"  Tech stack       : {tech}\n"
+        f"  Specialization   : {spec}\n"
+        f"{exp_line}"
+        f"{interest_line}"
+        "\nDistribution (STRICT — do not change section names):\n"
+        "  - 4 questions   Section: Personal     (attitude, motivation, self-awareness)\n"
+        f"  - 4 questions   Section: Technical    "
+        f"(MUST be specific to {tech} only — absolutely no other language or technology)\n"
+        f"  - 4 questions   Section: Professional "
+        f"(workplace scenarios for a {desig} at {exp_level} level)\n"
+        "\nEach block MUST follow this EXACT format (repeat 12 times, nothing else):\n"
         "Section: <Personal|Technical|Professional>\n"
-        "Question: <text>\n"
+        "Question: <question text>\n"
         "A. <option>\n"
         "B. <option>\n"
         "C. <option>\n"
@@ -556,7 +382,10 @@ def generate_ai_questions(student):
     )
 
     try:
-        print("🚀 Calling Ollama...")
+        print(
+            f"🚀 Ollama → tech={tech} | desig={desig} | "
+            f"exp={exp} ({exp_level}) | interests={interests[:3]}"
+        )
 
         response = requests.post(
             "http://localhost:11434/api/generate",
@@ -565,46 +394,147 @@ def generate_ai_questions(student):
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.3,   # lower = faster + more deterministic
-                    "num_predict": 900,   # 6 questions need ~150 tokens each = 900 max
-                    "top_k": 20,          # restrict sampling pool → faster inference
-                    "top_p": 0.85,        # tighter nucleus sampling → faster
-                    "repeat_penalty": 1.1,# discourages repetition without extra compute
-                    "stop": [],
+                    "temperature":    0.4,
+                    "num_predict":    1800,
+                    "top_k":          20,
+                    "top_p":          0.85,
+                    "repeat_penalty": 1.1,
                 },
             },
-            timeout=180,  # reduced from 300 — phi3 should finish well within 3 min
+            timeout=240,
         )
 
-        print("✅ Response received")
-
-        data = response.json()
-        text = data.get("response", "")
-
-        print("RAW RESPONSE:\n", text)
+        print("✅ Ollama responded")
+        text = response.json().get("response", "")
+        print("RAW (first 800 chars):\n", text[:800])
 
         pattern = r"(Section:\s*(?:Personal|Technical|Professional).*?Answer:\s*[A-Da-d])"
-        matches = re.findall(pattern, text, re.DOTALL | re.IGNORECASE)
-        questions = [q.strip() for q in matches]
+        matches = [m.strip() for m in re.findall(pattern, text, re.DOTALL | re.IGNORECASE)]
 
-        print(f"PARSED QUESTIONS: {len(questions)}")
+        personal     = [q for q in matches if re.search(r"Section:\s*Personal",     q, re.IGNORECASE)]
+        technical    = [q for q in matches if re.search(r"Section:\s*Technical",    q, re.IGNORECASE)]
+        professional = [q for q in matches if re.search(r"Section:\s*Professional", q, re.IGNORECASE)]
 
-        personal     = [q for q in questions if re.search(r"Section:\s*Personal",     q, re.IGNORECASE)]
-        technical    = [q for q in questions if re.search(r"Section:\s*Technical",    q, re.IGNORECASE)]
-        professional = [q for q in questions if re.search(r"Section:\s*Professional", q, re.IGNORECASE)]
-
-        print(f"  Personal: {len(personal)}, Technical: {len(technical)}, Professional: {len(professional)}")
-
-        fb    = fallback_questions(student)
-
-        # Fill any missing sections from fallback so we always return exactly 6
-        final = (personal     + fb[0:2])[:2] + \
-                (technical    + fb[2:4])[:2] + \
-                (professional + fb[4:6])[:2]
-
-        print(f"FINAL QUESTIONS: {len(final)}")
-        return final
+        print(
+            f"  Parsed → Personal:{len(personal)} "
+            f"Technical:{len(technical)} "
+            f"Professional:{len(professional)}"
+        )
+        return personal, technical, professional
 
     except Exception as e:
-        print(f"❌ ERROR: {e}")
-        return fallback_questions(student)
+        print(f"❌ Ollama error: {e}")
+        return [], [], []
+
+
+# ─────────────────────────────────────────────────────────────
+# Public entry point
+# ─────────────────────────────────────────────────────────────
+
+def generate_ai_questions(student, force_refresh=False):
+    """
+    Hybrid strategy — always returns exactly 12 question strings (4 per section).
+
+    Priority:
+      1. QuestionBank  (instant, strict tech-stack matching)
+      2. Ollama        (generated + saved to bank for next time)
+      3. Static fallback (personalised, never fails)
+
+    When Ollama times out or fails, the Technical section falls back to
+    personalised static questions — never cross-stack bank questions.
+    """
+    ctx = _build_student_context(student)
+    print(f"📋 Context → {ctx}")
+
+    SECTIONS = ["Personal", "Technical", "Professional"]
+    bank_results = {}
+
+    # ── Step 1: QuestionBank ──────────────────────────────────
+    if not force_refresh:
+        for section in SECTIONS:
+            bank_results[section] = _get_from_bank(section, ctx)
+            print(
+                f"  Bank [{section}]: "
+                f"{len(bank_results[section])}/{NEEDED_PER_SECTION} found"
+            )
+    else:
+        bank_results = {s: [] for s in SECTIONS}
+
+    fully_covered = all(
+        len(bank_results[s]) >= NEEDED_PER_SECTION for s in SECTIONS
+    )
+
+    if fully_covered:
+        print("⚡ All 12 served from QuestionBank (instant)")
+        result = []
+        for section in SECTIONS:
+            for qb in bank_results[section][:NEEDED_PER_SECTION]:
+                qb.times_used += 1
+                qb.save(update_fields=["times_used"])
+                result.append(qb.question)
+        return result
+
+    # ── Step 2: Ollama for the gap ────────────────────────────
+    ai_personal, ai_technical, ai_professional = _call_ollama(ctx)
+
+    # Save everything Ollama returned (only if it actually returned something)
+    to_save = (
+          [("Personal",     q) for q in ai_personal]
+        + [("Technical",    q) for q in ai_technical]
+        + [("Professional", q) for q in ai_professional]
+    )
+    if to_save:
+        _save_to_bank(to_save, ctx)
+
+    # ── Step 3: Assemble final 12 ─────────────────────────────
+    fb = _fallback_questions(ctx)
+
+    def pick(section, ai_list, fb_slice):
+        """
+        Priority within each section:
+          bank (strict-matched) → Ollama → static fallback
+
+        IMPORTANT: bank_results for Technical only contains same-tech-stack
+        questions (hard-stopped in _get_from_bank), so this is always safe.
+        """
+        bank_texts = []
+        for qb in bank_results.get(section, [])[:NEEDED_PER_SECTION]:
+            qb.times_used += 1
+            qb.save(update_fields=["times_used"])
+            bank_texts.append(qb.question)
+
+        combined = bank_texts + ai_list + fb_slice
+
+        # Deduplicate preserving order (first occurrence wins)
+        seen, unique = set(), []
+        for item in combined:
+            key = _norm(item[:100])
+            if key not in seen:
+                seen.add(key)
+                unique.append(item)
+
+        selected = unique[:NEEDED_PER_SECTION]
+
+        # Safety net: if still short (shouldn't happen), pad with fallback
+        if len(selected) < NEEDED_PER_SECTION:
+            extras = [
+                q for q in fb_slice
+                if _norm(q[:100]) not in seen
+            ]
+            selected.extend(extras[:NEEDED_PER_SECTION - len(selected)])
+
+        print(
+            f"  pick [{section}]: bank={len(bank_texts)} "
+            f"ai={len(ai_list)} fb_used={max(0, NEEDED_PER_SECTION - len(bank_texts) - len(ai_list))} "
+            f"→ final={len(selected)}"
+        )
+        return selected
+
+    final = (
+          pick("Personal",     ai_personal,     fb[0:4])
+        + pick("Technical",    ai_technical,    fb[4:8])
+        + pick("Professional", ai_professional, fb[8:12])
+    )
+
+    print(f"✅ Final questions assembled: {len(final)} (target 12)")
+    return final
